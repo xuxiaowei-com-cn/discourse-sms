@@ -18,15 +18,9 @@ module ::DiscourseSms
     def self.record!(user:, phone_number:, event_type:)
       return if user.nil? || phone_number.blank?
 
-      create!(
-        user_id: user.id,
-        phone_number: phone_number,
-        event_type: event_type.to_s,
-      )
+      create!(user_id: user.id, phone_number: phone_number, event_type: event_type.to_s)
     rescue StandardError => e
-      Rails.logger.warn(
-        "[discourse-sms] failed to record phone history: #{e.class}: #{e.message}",
-      )
+      Rails.logger.warn("[discourse-sms] failed to record phone history: #{e.class}: #{e.message}")
       nil
     end
 

@@ -11,10 +11,14 @@ module ::DiscourseSms
   # when verifying, a code. Success can be detected from the HTTP status alone
   # or from a configurable JSON path in the response.
   class ApiClient
-    class Error < StandardError; end
-    class ConfigurationError < Error; end
-    class UnavailableError < Error; end
-    class RejectedError < Error; end
+    class Error < StandardError
+    end
+    class ConfigurationError < Error
+    end
+    class UnavailableError < Error
+    end
+    class RejectedError < Error
+    end
 
     def send_code(phone:, user: nil)
       ensure_configured!
@@ -58,7 +62,13 @@ module ::DiscourseSms
         )
 
       if response.is_a?(Net::HTTPSuccess)
-        return success_response?(response, SiteSetting.sms_verify_success_json_path, SiteSetting.sms_verify_success_value)
+        return(
+          success_response?(
+            response,
+            SiteSetting.sms_verify_success_json_path,
+            SiteSetting.sms_verify_success_value,
+          )
+        )
       end
 
       # Most providers answer 400/422 for an invalid or expired code.
@@ -198,20 +208,23 @@ module ::DiscourseSms
       json = parse_json(response.body)
       return nil if json.nil?
 
-      path.to_s.split(".").reduce(json) do |memo, key|
-        break nil if memo.nil?
+      path
+        .to_s
+        .split(".")
+        .reduce(json) do |memo, key|
+          break nil if memo.nil?
 
-        if memo.is_a?(Array)
-          index = Integer(key, exception: false)
-          break nil if index.nil?
+          if memo.is_a?(Array)
+            index = Integer(key, exception: false)
+            break nil if index.nil?
 
-          memo[index]
-        elsif memo.is_a?(Hash)
-          memo[key]
-        else
-          break nil
+            memo[index]
+          elsif memo.is_a?(Hash)
+            memo[key]
+          else
+            break nil
+          end
         end
-      end
     end
 
     def error_message(response)

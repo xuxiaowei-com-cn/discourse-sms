@@ -15,12 +15,7 @@ module ::DiscourseSms
 
     def self.issue!(user:, phone_number:, ttl:)
       now = Time.zone.now
-      attributes = {
-        phone_number: phone_number,
-        sent_at: now,
-        expires_at: now + ttl,
-        attempts: 0,
-      }
+      attributes = { phone_number: phone_number, sent_at: now, expires_at: now + ttl, attempts: 0 }
 
       challenge = find_or_initialize_by(user_id: user.id)
       challenge.assign_attributes(attributes)

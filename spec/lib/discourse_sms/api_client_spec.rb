@@ -68,8 +68,8 @@ RSpec.describe DiscourseSms::ApiClient do
       expect(
         a_request(:post, send_url).with do |request|
           body = JSON.parse(request.body)
-          body["uid"] == user.id && body["mail"] == user.email &&
-            !body.key?("user_id") && !body.key?("email")
+          body["uid"] == user.id && body["mail"] == user.email && !body.key?("user_id") &&
+            !body.key?("email")
         end,
       ).to have_been_made.once
     end
@@ -83,10 +83,8 @@ RSpec.describe DiscourseSms::ApiClient do
       expect(
         a_request(:post, send_url).with do |request|
           request.headers["Content-Type"] == "application/x-www-form-urlencoded" &&
-            Rack::Utils.parse_nested_query(request.body) == {
-              "phone" => phone,
-              "purpose" => "bind_phone",
-            }
+            Rack::Utils.parse_nested_query(request.body) ==
+              { "phone" => phone, "purpose" => "bind_phone" }
         end,
       ).to have_been_made.once
     end
@@ -98,9 +96,7 @@ RSpec.describe DiscourseSms::ApiClient do
       described_class.new.send_code(phone: phone)
 
       expect(
-        a_request(:post, send_url).with do |request|
-          JSON.parse(request.body)["appId"] == "abc"
-        end,
+        a_request(:post, send_url).with { |request| JSON.parse(request.body)["appId"] == "abc" },
       ).to have_been_made.once
     end
 

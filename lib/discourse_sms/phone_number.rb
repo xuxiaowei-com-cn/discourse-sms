@@ -14,7 +14,7 @@ module ::DiscourseSms
       value = raw.to_s.strip
       return nil if value.blank?
 
-      value = value.gsub(/[\s\-().\/]/, "")
+      value = value.gsub(%r{[\s\-()./]}, "")
 
       if value.start_with?("00")
         digits = value.delete_prefix("00")

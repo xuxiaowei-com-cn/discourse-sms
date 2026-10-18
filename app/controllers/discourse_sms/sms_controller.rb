@@ -105,7 +105,9 @@ module ::DiscourseSms
       if verifying_current
         binding = PhoneBinding.for_user(current_user)
         return render_error(:current_phone_not_bound) if binding.nil?
-        return render_error(:current_phone_mismatch) if challenge.phone_number != binding.phone_number
+        if challenge.phone_number != binding.phone_number
+          return render_error(:current_phone_mismatch)
+        end
       elsif PhoneBinding.verified?(current_user) && !phone_change_authorized?
         return render_error(:current_phone_verification_required)
       end
@@ -167,11 +169,7 @@ module ::DiscourseSms
       end
 
       if previous_phone.present? && previous_phone != binding.phone_number
-        PhoneHistory.record!(
-          user: current_user,
-          phone_number: previous_phone,
-          event_type: "unbind",
-        )
+        PhoneHistory.record!(user: current_user, phone_number: previous_phone, event_type: "unbind")
       end
 
       if previous_phone != binding.phone_number
@@ -216,12 +214,7 @@ module ::DiscourseSms
       phone_key = Digest::SHA256.hexdigest(phone)
       interval = SiteSetting.sms_resend_interval_seconds.to_i
       if interval.positive?
-        RateLimiter.new(
-          current_user,
-          "sms-send-cooldown-#{phone_key}",
-          1,
-          interval,
-        ).performed!
+        RateLimiter.new(current_user, "sms-send-cooldown-#{phone_key}", 1, interval).performed!
       end
 
       max = SiteSetting.sms_max_sends_per_hour.to_i

@@ -174,9 +174,7 @@ RSpec.describe DiscourseSms::SmsController do
            }
 
       expect(response.status).to eq(422)
-      expect(response.parsed_body["errors"].first).to eq(
-        I18n.t("sms.errors.captcha_failed"),
-      )
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.captcha_failed"))
       expect(DiscourseSms::VerificationChallenge.count).to eq(0)
       expect(a_request(:post, send_url)).not_to have_been_made
     end
@@ -267,9 +265,7 @@ RSpec.describe DiscourseSms::SmsController do
            }
 
       expect(response.status).to eq(503)
-      expect(response.parsed_body["errors"].first).to eq(
-        I18n.t("sms.errors.provider_unavailable"),
-      )
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.provider_unavailable"))
     end
   end
 
@@ -368,23 +364,14 @@ RSpec.describe DiscourseSms::SmsController do
       expect(response.status).to eq(200)
       expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(phone)
       expect(DiscourseSms::PhoneHistory.order(:id).pluck(:event_type, :phone_number)).to eq(
-        [
-          ["verify", old_phone],
-          ["unbind", old_phone],
-          ["bind", phone],
-          ["verify", phone],
-        ],
+        [["verify", old_phone], ["unbind", old_phone], ["bind", phone], ["verify", phone]],
       )
     end
   end
 
   describe "#verify_code" do
     before do
-      DiscourseSms::VerificationChallenge.issue!(
-        user: user,
-        phone_number: phone,
-        ttl: 10.minutes,
-      )
+      DiscourseSms::VerificationChallenge.issue!(user: user, phone_number: phone, ttl: 10.minutes)
       stub_request(:post, verify_url).to_return(status: 200, body: '{"success":true}')
     end
 
@@ -438,9 +425,7 @@ RSpec.describe DiscourseSms::SmsController do
            }
 
       expect(response.status).to eq(422)
-      expect(response.parsed_body["errors"].first).to eq(
-        I18n.t("sms.errors.code_invalid_format"),
-      )
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.code_invalid_format"))
       expect(a_request(:post, verify_url)).not_to have_been_made
     end
 
@@ -473,9 +458,7 @@ RSpec.describe DiscourseSms::SmsController do
            }
 
       expect(response.status).to eq(422)
-      expect(response.parsed_body["errors"].first).to eq(
-        I18n.t("sms.errors.code_not_requested"),
-      )
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.code_not_requested"))
     end
 
     it "locks the challenge after too many attempts" do
@@ -490,9 +473,7 @@ RSpec.describe DiscourseSms::SmsController do
            }
 
       expect(response.status).to eq(422)
-      expect(response.parsed_body["errors"].first).to eq(
-        I18n.t("sms.errors.too_many_attempts"),
-      )
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.too_many_attempts"))
       expect(a_request(:post, verify_url)).not_to have_been_made
     end
 
@@ -528,9 +509,7 @@ RSpec.describe DiscourseSms::SmsController do
            }
 
       expect(response.status).to eq(503)
-      expect(response.parsed_body["errors"].first).to eq(
-        I18n.t("sms.errors.provider_unavailable"),
-      )
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.provider_unavailable"))
     end
   end
 end

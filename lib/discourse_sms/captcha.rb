@@ -10,10 +10,14 @@ module ::DiscourseSms
   # discourse-captcha plugin. Sending an SMS is refused unless captcha support
   # is both enabled and fully configured.
   class Captcha
-    class Error < StandardError; end
-    class NotConfigured < Error; end
-    class VerificationFailed < Error; end
-    class Unavailable < Error; end
+    class Error < StandardError
+    end
+    class NotConfigured < Error
+    end
+    class VerificationFailed < Error
+    end
+    class Unavailable < Error
+    end
 
     HCAPTCHA = "hcaptcha"
     RECAPTCHA_V2 = "recaptcha_v2"
@@ -60,11 +64,7 @@ module ::DiscourseSms
       def configuration
         case provider
         when HCAPTCHA
-          [
-            SiteSetting.hcaptcha_secret_key,
-            HCAPTCHA_VERIFY_URL,
-            SiteSetting.hcaptcha_site_key,
-          ]
+          [SiteSetting.hcaptcha_secret_key, HCAPTCHA_VERIFY_URL, SiteSetting.hcaptcha_site_key]
         when RECAPTCHA_V2
           [
             SiteSetting.recaptcha_v2_secret_key,

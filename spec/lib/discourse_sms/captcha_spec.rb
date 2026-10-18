@@ -2,8 +2,7 @@
 
 require "rails_helper"
 
-RSpec.describe DiscourseSms::Captcha,
-               skip: !SiteSetting.respond_to?(:discourse_captcha_enabled) do
+RSpec.describe DiscourseSms::Captcha, skip: !SiteSetting.respond_to?(:discourse_captcha_enabled) do
   before do
     SiteSetting.discourse_captcha_enabled = true
     SiteSetting.discourse_captcha_provider = "hcaptcha"
@@ -31,9 +30,9 @@ RSpec.describe DiscourseSms::Captcha,
 
   describe ".verify!" do
     it "verifies an hCaptcha token" do
-      stub_request(:post, "https://hcaptcha.com/siteverify")
-        .with(body: hash_including("secret" => "secret-key", "response" => "token"))
-        .to_return(status: 200, body: '{"success":true}')
+      stub_request(:post, "https://hcaptcha.com/siteverify").with(
+        body: hash_including("secret" => "secret-key", "response" => "token"),
+      ).to_return(status: 200, body: '{"success":true}')
 
       expect(described_class.verify!("token", remote_ip: "1.2.3.4")).to eq(true)
     end
@@ -74,9 +73,7 @@ RSpec.describe DiscourseSms::Captcha,
     it "raises when the provider is unavailable" do
       stub_request(:post, "https://hcaptcha.com/siteverify").to_return(status: 500, body: "")
 
-      expect { described_class.verify!("token") }.to raise_error(
-        DiscourseSms::Captcha::Unavailable,
-      )
+      expect { described_class.verify!("token") }.to raise_error(DiscourseSms::Captcha::Unavailable)
     end
 
     context "with reCAPTCHA v3" do
