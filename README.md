@@ -73,6 +73,28 @@ Then, in **Admin → Plugins → discourse-sms**:
 3. Make sure **Captcha** is enabled under **Admin → Settings → Security** (or the Captcha plugin
    settings) and that a provider and its keys are configured. Keep `sms require captcha` enabled.
 
+### Production / Docker asset build
+
+The official `discourse/discourse` image serves precompiled frontend assets and sets
+`SKIP_EMBER_CLI_COMPILE=1`. Plugins with frontend code (including this one) are not present in
+that prebuilt bundle, so the preferences section will not render until assets are rebuilt once:
+
+```sh
+docker exec -it <web-container> bash
+cd /var/www/discourse
+# Node.js 22 and pnpm must be available in the container
+pnpm install --frozen-lockfile
+git init
+printf "node_modules/\npublic/\ntmp/\nlog/\n" > .git/info/exclude
+git add frontend package.json pnpm-lock.yaml
+LOAD_PLUGINS=1 DISCOURSE_DOWNLOAD_PRE_BUILT_ASSETS=0 SKIP_EMBER_CLI_COMPILE=0 \
+  bundle exec rake assets:precompile
+sv restart unicorn
+```
+
+Refresh the browser afterwards. Re-run the build after upgrading the base image or changing the
+plugin's frontend code.
+
 ## Configuration
 
 All settings are under **Admin → Settings → Plugins**.

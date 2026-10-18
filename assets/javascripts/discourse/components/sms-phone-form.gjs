@@ -71,7 +71,8 @@ export default class SmsPhoneForm extends Component {
 
   get canManage() {
     return Boolean(
-      this.currentUser?.id && this.args.model?.id === this.currentUser.id
+      this.currentUser?.id &&
+      (!this.args.model || this.args.model.id === this.currentUser.id)
     );
   }
 

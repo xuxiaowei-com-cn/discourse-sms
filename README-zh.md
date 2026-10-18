@@ -68,6 +68,27 @@ bin/rails db:migrate
 3. 确认**管理 → 设置 → 安全**（或 Captcha 插件设置）中已启用验证码，并配置好服务商和密钥；保持
    `sms require captcha` 开启。
 
+### 生产环境 / Docker 资源构建
+
+官方 `discourse/discourse` 镜像使用预编译的前端资源，并设置了 `SKIP_EMBER_CLI_COMPILE=1`。
+包含前端代码的插件（包括本插件）不会出现在该预编译包中，因此必须先重新构建一次资源，
+偏好设置中的手机号区块才会渲染：
+
+```sh
+docker exec -it <web 容器名> bash
+cd /var/www/discourse
+# 容器内需要 Node.js 22 和 pnpm
+pnpm install --frozen-lockfile
+git init
+printf "node_modules/\npublic/\ntmp/\nlog/\n" > .git/info/exclude
+git add frontend package.json pnpm-lock.yaml
+LOAD_PLUGINS=1 DISCOURSE_DOWNLOAD_PRE_BUILT_ASSETS=0 SKIP_EMBER_CLI_COMPILE=0 \
+  bundle exec rake assets:precompile
+sv restart unicorn
+```
+
+构建完成后刷新浏览器。升级基础镜像或修改插件前端代码后需要重新执行。
+
 ## 配置项
 
 所有设置位于**管理 → 设置 → 插件**。
