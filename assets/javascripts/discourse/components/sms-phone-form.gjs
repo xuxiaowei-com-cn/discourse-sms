@@ -51,14 +51,12 @@ export default class SmsPhoneForm extends Component {
       this.#teardownCaptchaWidget();
     };
   });
+  reloadForProfile = modifier(() => {
+    this.loadStatus();
+  });
   #captchaWidgetId = null;
   #captchaScriptPromise = null;
   #cooldownTimer = null;
-
-  constructor() {
-    super(...arguments);
-    this.loadStatus();
-  }
 
   willDestroy() {
     clearInterval(this.#cooldownTimer);
@@ -78,17 +76,34 @@ export default class SmsPhoneForm extends Component {
     return match ? decodeURIComponent(match[1]).toLowerCase() : null;
   }
 
-  get canManage() {
-    const currentUsername = (
+  get currentUsername() {
+    return (
       this.currentUser?.username_lower || this.currentUser?.username
     )?.toLowerCase();
+  }
 
+  get viewingOtherUser() {
+    return Boolean(
+      this.profileUsername &&
+      this.currentUsername &&
+      this.profileUsername !== this.currentUsername
+    );
+  }
+
+  get canManage() {
     return Boolean(
       this.currentUser?.id &&
-      currentUsername &&
-      (!this.args.model || this.args.model.id === this.currentUser.id) &&
-      (!this.profileUsername || this.profileUsername === currentUsername)
+      !this.viewingOtherUser &&
+      (!this.args.model || this.args.model.id === this.currentUser.id)
     );
+  }
+
+  get canViewOtherUser() {
+    return Boolean(this.currentUser?.admin && this.viewingOtherUser);
+  }
+
+  get canViewSection() {
+    return this.canManage || this.canViewOtherUser;
   }
 
   get captchaProvider() {
@@ -159,13 +174,20 @@ export default class SmsPhoneForm extends Component {
 
   @action
   async loadStatus() {
-    if (!this.enabled) {
+    if (!this.enabled || !this.canViewSection) {
       this.loading = false;
       return;
     }
 
+    this.loading = true;
+    this.error = null;
+
+    const url = this.viewingOtherUser
+      ? `/sms/users/${encodeURIComponent(this.profileUsername)}/status.json`
+      : "/sms/status.json";
+
     try {
-      this.binding = await ajax("/sms/status.json");
+      this.binding = await ajax(url);
     } catch (error) {
       this.error = extractError(error, i18n("sms.errors.generic"));
     } finally {
@@ -485,13 +507,23 @@ export default class SmsPhoneForm extends Component {
 
   <template>
     {{#if this.enabled}}
-      {{#if this.canManage}}
+      {{#if this.canViewSection}}
         <div
           class="control-group pref-sms-phone"
           data-setting-name="user-sms-phone"
+          {{this.reloadForProfile this.profileUsername}}
         >
           <label class="control-label">{{i18n "sms.title"}}</label>
-          <div class="instructions">{{i18n "sms.description"}}</div>
+          <div class="instructions">
+            {{#if this.viewingOtherUser}}
+              {{i18n
+                "sms.admin_view.description"
+                username=this.profileUsername
+              }}
+            {{else}}
+              {{i18n "sms.description"}}
+            {{/if}}
+          </div>
 
           <div class="controls">
             {{#if this.loading}}
@@ -499,32 +531,45 @@ export default class SmsPhoneForm extends Component {
             {{else}}
               {{#if this.binding.bound}}
                 <div class="sms-phone-status">
-                  <span
-                    class="sms-phone-number"
-                  >{{this.binding.masked_phone}}</span>
+                  <span class="sms-phone-number">
+                    {{#if this.viewingOtherUser}}
+                      {{this.binding.phone_number}}
+                    {{else}}
+                      {{this.binding.masked_phone}}
+                    {{/if}}
+                  </span>
                   <span class="sms-phone-badge">{{i18n
                       "sms.status.verified"
                     }}</span>
                 </div>
               {{else}}
                 <div class="sms-phone-status sms-phone-status--empty">
-                  {{i18n "sms.not_bound"}}
+                  {{#if this.viewingOtherUser}}
+                    {{i18n
+                      "sms.admin_view.not_bound"
+                      username=this.profileUsername
+                    }}
+                  {{else}}
+                    {{i18n "sms.not_bound"}}
+                  {{/if}}
                 </div>
               {{/if}}
 
-              {{#unless this.editing}}
-                <button
-                  type="button"
-                  class="btn btn-default"
-                  {{on "click" this.startEditing}}
-                >
-                  {{#if this.binding.bound}}
-                    {{i18n "sms.change"}}
-                  {{else}}
-                    {{i18n "sms.bind"}}
-                  {{/if}}
-                </button>
-              {{/unless}}
+              {{#if this.canManage}}
+                {{#unless this.editing}}
+                  <button
+                    type="button"
+                    class="btn btn-default"
+                    {{on "click" this.startEditing}}
+                  >
+                    {{#if this.binding.bound}}
+                      {{i18n "sms.change"}}
+                    {{else}}
+                      {{i18n "sms.bind"}}
+                    {{/if}}
+                  </button>
+                {{/unless}}
+              {{/if}}
 
               {{#if this.error}}
                 <div class="alert alert-error">{{this.error}}</div>

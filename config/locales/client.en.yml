@@ -9,6 +9,9 @@ en:
       status:
         verified: "Verified"
         unverified: "Not verified"
+      admin_view:
+        description: "Phone number linked to %{username}. Only administrators can see the full number."
+        not_bound: "%{username} has not bound a phone number."
       bound_as: "Linked to %{phone}."
       not_bound: "No phone number is linked to your account yet."
       bind: "Link phone number"

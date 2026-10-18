@@ -5,6 +5,7 @@ require "rails_helper"
 RSpec.describe DiscourseSms::SmsController do
   fab!(:user)
   fab!(:other_user, :user)
+  fab!(:admin)
 
   let(:send_url) { "https://sms.example.com/send" }
   let(:verify_url) { "https://sms.example.com/verify" }
@@ -53,6 +54,44 @@ RSpec.describe DiscourseSms::SmsController do
       expect(response.parsed_body["bound"]).to eq(true)
       expect(response.parsed_body["masked_phone"]).to eq("+8613****8000")
       expect(response.parsed_body["verified_at"]).to be_present
+      expect(response.parsed_body).not_to have_key("phone_number")
+    end
+  end
+
+  describe "#user_status" do
+    before do
+      DiscourseSms::PhoneBinding.create!(
+        user: other_user,
+        phone_number: "+8618300000001",
+        verified_at: Time.zone.now,
+      )
+    end
+
+    it "allows an admin to view another member's full phone number" do
+      sign_in(admin)
+
+      get "/sms/users/#{other_user.username}/status.json"
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["username"]).to eq(other_user.username)
+      expect(response.parsed_body["phone_number"]).to eq("+8618300000001")
+      expect(response.parsed_body["masked_phone"]).to eq("+8618****0001")
+    end
+
+    it "rejects a non-admin member" do
+      sign_in(user)
+
+      get "/sms/users/#{other_user.username}/status.json"
+
+      expect(response.status).to eq(403)
+    end
+
+    it "returns not found for an unknown username" do
+      sign_in(admin)
+
+      get "/sms/users/not-a-real-user/status.json"
+
+      expect(response.status).to eq(404)
     end
   end
 

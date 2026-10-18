@@ -7,9 +7,21 @@ module ::DiscourseSms
     requires_plugin PLUGIN_NAME
 
     before_action :ensure_logged_in
+    before_action :ensure_admin, only: :user_status
 
     def status
       render json: binding_json(PhoneBinding.for_user(current_user))
+    end
+
+    def user_status
+      user = User.find_by(username_lower: params[:username].to_s.downcase)
+      raise Discourse::NotFound if user.nil?
+
+      binding = PhoneBinding.for_user(user)
+      render json: binding_json(binding).merge(
+               username: user.username,
+               phone_number: binding&.phone_number,
+             )
     end
 
     def send_code

@@ -2,6 +2,7 @@
 
 DiscourseSms::Engine.routes.draw do
   get "/status" => "sms#status"
+  get "/users/:username/status" => "sms#user_status"
   post "/send_code" => "sms#send_code"
   post "/verify_code" => "sms#verify_code"
 end

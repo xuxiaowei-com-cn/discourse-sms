@@ -241,6 +241,8 @@ bind a phone number.
   only shown on the member's own preferences page; staff viewing another member's security page do
   not see their own number there.
 - The masked number is displayed after verification.
+- Administrators can open another member's **Preferences → Security** page and see that member's full
+  bound phone number in a read-only view.
 - **Change phone number** starts the same send/verify flow; the old binding stays active until the
   new number is verified.
 - Changing the phone number requires a new SMS code; when `sms_require_captcha` is on, a new captcha is required too.
@@ -274,6 +276,7 @@ bind a phone number.
 - Phone bindings are deleted when a user is destroyed or anonymized.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
 - When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or private messages.
+- Full phone numbers are only returned by the admin-only status endpoint; the self endpoint returns a masked number.
 
 ## Development
 

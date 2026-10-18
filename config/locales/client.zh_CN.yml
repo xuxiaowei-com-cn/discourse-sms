@@ -9,6 +9,9 @@ zh_CN:
       status:
         verified: "已验证"
         unverified: "未验证"
+      admin_view:
+        description: "%{username} 绑定的手机号。仅管理员可查看完整号码。"
+        not_bound: "%{username} 尚未绑定手机号。"
       bound_as: "当前绑定：%{phone}。"
       not_bound: "当前账号尚未绑定手机号。"
       bind: "绑定手机号"
