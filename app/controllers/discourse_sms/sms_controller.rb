@@ -28,7 +28,13 @@ module ::DiscourseSms
         binding = PhoneBinding.for_user(current_user)
         return render_error(:current_phone_not_bound) if binding.nil?
 
-        phone = binding.phone_number
+        phone =
+          PhoneNumber.normalize(
+            params[:sms_phone],
+            default_country_code: SiteSetting.sms_default_country_code,
+          )
+        return render_error(:phone_invalid) if phone.nil?
+        return render_error(:current_phone_does_not_match) if phone != binding.phone_number
       else
         phone =
           PhoneNumber.normalize(

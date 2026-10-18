@@ -286,6 +286,23 @@ RSpec.describe DiscourseSms::SmsController do
       stub_request(:post, verify_url).to_return(status: 200, body: '{"success":true}')
     end
 
+    it "rejects a current phone number that does not match the binding" do
+      post "/sms/send_code.json",
+           params: {
+             purpose: "verify_current_phone",
+             sms_phone: "13800138000",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(422)
+      expect(response.parsed_body["errors"].first).to eq(
+        I18n.t("sms.errors.current_phone_does_not_match"),
+      )
+      expect(a_request(:post, send_url)).not_to have_been_made
+    end
+
     it "requires current phone verification before sending a new code" do
       post "/sms/send_code.json",
            params: {
@@ -306,6 +323,7 @@ RSpec.describe DiscourseSms::SmsController do
       post "/sms/send_code.json",
            params: {
              purpose: "verify_current_phone",
+             sms_phone: "13900139000",
            },
            headers: {
              "ACCEPT" => "application/json",

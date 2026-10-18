@@ -16,9 +16,10 @@ zh_CN:
       send_current_code: "发送验证码到当前手机号"
       verify_current_phone: "验证当前手机号"
       change_phone:
-        verify_current_hint: "更换手机号前，请先验证当前绑定的手机号。"
+        verify_current_hint: "更换手机号前，请先输入并验证当前绑定的手机号。"
         current_code_sent: "验证码已发送到当前手机号。"
         current_verified: "当前手机号已验证，请输入新手机号。"
+        enter_current_hint: "请输入当前绑定的手机号。"
       bound_as: "当前绑定：%{phone}。"
       not_bound: "当前账号尚未绑定手机号。"
       bind: "绑定手机号"

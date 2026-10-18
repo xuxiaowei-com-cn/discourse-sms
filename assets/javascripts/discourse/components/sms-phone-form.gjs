@@ -160,14 +160,6 @@ export default class SmsPhoneForm extends Component {
       : "grecaptcha";
   }
 
-  get phoneValue() {
-    return this.verifyingCurrent ? this.binding.masked_phone : this.phone;
-  }
-
-  get phoneInputDisabled() {
-    return this.verifyingCurrent || this.codeSent;
-  }
-
   get sendDisabled() {
     return (
       this.sending ||
@@ -263,7 +255,7 @@ export default class SmsPhoneForm extends Component {
       return;
     }
 
-    if (!this.verifyingCurrent && !this.phone.trim()) {
+    if (!this.phone.trim()) {
       this.error = i18n("sms.errors.phone_invalid");
       return;
     }
@@ -288,7 +280,10 @@ export default class SmsPhoneForm extends Component {
       }
 
       const data = this.verifyingCurrent
-        ? { purpose: "verify_current_phone" }
+        ? {
+            purpose: "verify_current_phone",
+            sms_phone: this.phone.trim(),
+          }
         : { sms_phone: this.phone.trim() };
 
       if (token) {
@@ -622,14 +617,18 @@ export default class SmsPhoneForm extends Component {
                     class="input-large sms-phone-input"
                     type="tel"
                     autocomplete="tel"
-                    disabled={{this.phoneInputDisabled}}
+                    disabled={{this.codeSent}}
                     placeholder={{i18n "sms.phone_placeholder"}}
-                    value={{this.phoneValue}}
+                    value={{this.phone}}
                     {{on "input" this.onPhoneInput}}
                   />
-                  {{#unless this.verifyingCurrent}}
-                    <div class="instructions">{{i18n "sms.phone_hint"}}</div>
-                  {{/unless}}
+                  <div class="instructions">
+                    {{#if this.verifyingCurrent}}
+                      {{i18n "sms.change_phone.enter_current_hint"}}
+                    {{else}}
+                      {{i18n "sms.phone_hint"}}
+                    {{/if}}
+                  </div>
 
                   {{#unless this.captchaRequired}}
                     <div class="instructions">{{i18n

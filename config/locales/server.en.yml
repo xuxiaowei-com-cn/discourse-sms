@@ -8,6 +8,7 @@ en:
       current_phone_not_bound: "No phone number is bound to this account."
       current_phone_verification_required: "Verify your current phone number before changing it."
       current_phone_mismatch: "The verification code was requested for a different phone number."
+      current_phone_does_not_match: "The phone number you entered does not match the currently bound phone number."
       code_expired: "The verification code has expired. Request a new code."
       code_invalid: "The verification code is incorrect."
       too_many_attempts: "Too many verification attempts. Request a new code."

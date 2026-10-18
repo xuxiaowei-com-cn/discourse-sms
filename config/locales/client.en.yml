@@ -16,9 +16,10 @@ en:
       send_current_code: "Send code to current phone"
       verify_current_phone: "Verify current phone"
       change_phone:
-        verify_current_hint: "Before changing your phone number, verify the phone number currently linked to your account."
+        verify_current_hint: "Before changing your phone number, enter and verify the number currently bound to your account."
         current_code_sent: "A verification code has been sent to your current phone number."
         current_verified: "Current phone number verified. Enter the new phone number."
+        enter_current_hint: "Enter the phone number currently bound to your account."
       bound_as: "Linked to %{phone}."
       not_bound: "No phone number is linked to your account yet."
       bind: "Link phone number"

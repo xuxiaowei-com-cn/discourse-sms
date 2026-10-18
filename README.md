@@ -221,9 +221,10 @@ disabled, not configured, or the token is missing/invalid, the send request is r
 
 A member cannot replace a bound phone number directly:
 
-1. **Preferences → Security → Change phone number** asks for a code sent to the currently bound
-   number.
-2. After that code is verified, the browser switches to the new-phone form.
+1. **Preferences → Security → Change phone number** asks the member to enter the currently bound
+   number. A mismatched number is rejected without sending an SMS.
+2. A code is sent to the matching current number. After it is verified, the browser switches to the
+   new-phone form.
 3. A second code is sent to the new number and must be verified to complete the change.
 
 The current-phone verification is stored in the member's server session and expires after
@@ -258,7 +259,7 @@ bind a phone number.
   masked bound phone number in a read-only view.
 - **Change phone number** starts the same send/verify flow; the old binding stays active until the
   new number is verified.
-- Changing a bound phone number first requires a code sent to the currently bound number, then a second code sent to the new number. Captcha is used for both sends when `sms_require_captcha` is on.
+- Changing a bound phone number first requires entering the currently bound number; a mismatch is rejected, and a match sends a code to that number. A second code is then sent to the new number. Captcha is used for both sends when `sms_require_captcha` is on.
 
 ## Troubleshooting
 
@@ -289,7 +290,7 @@ bind a phone number.
 - Phone bindings are deleted when a user is destroyed or anonymized.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
 - When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or private messages.
-- Replacing a bound phone number requires verifying the old number first; the authorization is session-scoped and expires.
+- Replacing a bound phone number requires entering and verifying the old number first; a mismatch is rejected. The authorization is session-scoped and expires.
 - Administrators can only see a masked phone number; the admin-only status endpoint never returns the full number.
 
 ## Development

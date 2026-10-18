@@ -8,6 +8,7 @@ zh_CN:
       current_phone_not_bound: "当前账号尚未绑定手机号。"
       current_phone_verification_required: "更换手机号前，请先验证当前手机号。"
       current_phone_mismatch: "验证码不是为当前手机号申请的。"
+      current_phone_does_not_match: "输入的手机号与当前绑定的手机号不一致。"
       code_expired: "验证码已过期，请重新获取。"
       code_invalid: "验证码不正确。"
       too_many_attempts: "验证失败次数过多，请重新获取验证码。"
