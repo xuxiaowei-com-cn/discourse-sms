@@ -12,6 +12,13 @@ zh_CN:
       admin_view:
         description: "%{username} 绑定的手机号。仅显示脱敏号码。"
         not_bound: "%{username} 尚未绑定手机号。"
+      current_phone_label: "当前手机号"
+      send_current_code: "发送验证码到当前手机号"
+      verify_current_phone: "验证当前手机号"
+      change_phone:
+        verify_current_hint: "更换手机号前，请先验证当前绑定的手机号。"
+        current_code_sent: "验证码已发送到当前手机号。"
+        current_verified: "当前手机号已验证，请输入新手机号。"
       bound_as: "当前绑定：%{phone}。"
       not_bound: "当前账号尚未绑定手机号。"
       bind: "绑定手机号"
@@ -44,6 +51,9 @@ zh_CN:
         code_invalid: "验证码不正确。"
         code_expired: "验证码已过期，请重新获取。"
         code_not_requested: "请先获取验证码。"
+        current_phone_not_bound: "当前账号尚未绑定手机号。"
+        current_phone_verification_required: "更换手机号前，请先验证当前手机号。"
+        current_phone_mismatch: "验证码不是为当前手机号申请的。"
         too_many_attempts: "验证失败次数过多，请重新获取验证码。"
         provider_unavailable: "短信服务暂时不可用，请稍后重试。"
         captcha_failed: "人机验证失败，请重试。"

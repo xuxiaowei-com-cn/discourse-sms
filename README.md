@@ -217,6 +217,19 @@ The browser renders the widget for hCaptcha/reCAPTCHA v2, or executes reCAPTCHA 
 with the provider before any SMS request is made. If the requirement is enabled but captcha is
 disabled, not configured, or the token is missing/invalid, the send request is rejected.
 
+## Changing a bound phone number
+
+A member cannot replace a bound phone number directly:
+
+1. **Preferences → Security → Change phone number** asks for a code sent to the currently bound
+   number.
+2. After that code is verified, the browser switches to the new-phone form.
+3. A second code is sent to the new number and must be verified to complete the change.
+
+The current-phone verification is stored in the member's server session and expires after
+`sms_code_ttl_minutes`. It is cleared after the new number is saved. The old binding stays active
+until the new number is verified.
+
 ## Forced phone binding
 
 Set `sms_require_phone_binding` to require a verified phone number before a member can:
@@ -245,7 +258,7 @@ bind a phone number.
   masked bound phone number in a read-only view.
 - **Change phone number** starts the same send/verify flow; the old binding stays active until the
   new number is verified.
-- Changing the phone number requires a new SMS code; when `sms_require_captcha` is on, a new captcha is required too.
+- Changing a bound phone number first requires a code sent to the currently bound number, then a second code sent to the new number. Captcha is used for both sends when `sms_require_captcha` is on.
 
 ## Troubleshooting
 
@@ -276,6 +289,7 @@ bind a phone number.
 - Phone bindings are deleted when a user is destroyed or anonymized.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
 - When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or private messages.
+- Replacing a bound phone number requires verifying the old number first; the authorization is session-scoped and expires.
 - Administrators can only see a masked phone number; the admin-only status endpoint never returns the full number.
 
 ## Development

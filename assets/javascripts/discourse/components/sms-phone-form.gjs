@@ -23,6 +23,7 @@ export default class SmsPhoneForm extends Component {
   @tracked loading = true;
   @tracked binding = { bound: false };
   @tracked editing = false;
+  @tracked verifyingCurrent = false;
   @tracked phone = "";
   @tracked code = "";
   @tracked codeSent = false;
@@ -159,11 +160,19 @@ export default class SmsPhoneForm extends Component {
       : "grecaptcha";
   }
 
+  get phoneValue() {
+    return this.verifyingCurrent ? this.binding.masked_phone : this.phone;
+  }
+
+  get phoneInputDisabled() {
+    return this.verifyingCurrent || this.codeSent;
+  }
+
   get sendDisabled() {
     return (
       this.sending ||
       this.resendRemaining > 0 ||
-      !this.phone.trim() ||
+      (!this.verifyingCurrent && !this.phone.trim()) ||
       !this.captchaConfigured
     );
   }
@@ -198,6 +207,7 @@ export default class SmsPhoneForm extends Component {
   @action
   startEditing() {
     this.editing = true;
+    this.verifyingCurrent = Boolean(this.binding.bound);
     this.phone = "";
     this.code = "";
     this.codeSent = false;
@@ -219,6 +229,7 @@ export default class SmsPhoneForm extends Component {
   @action
   cancelEditing() {
     this.editing = false;
+    this.verifyingCurrent = false;
     this.phone = "";
     this.code = "";
     this.codeSent = false;
@@ -252,7 +263,7 @@ export default class SmsPhoneForm extends Component {
       return;
     }
 
-    if (!this.phone.trim()) {
+    if (!this.verifyingCurrent && !this.phone.trim()) {
       this.error = i18n("sms.errors.phone_invalid");
       return;
     }
@@ -276,7 +287,10 @@ export default class SmsPhoneForm extends Component {
         this.captchaLoadFailed = false;
       }
 
-      const data = { sms_phone: this.phone.trim() };
+      const data = this.verifyingCurrent
+        ? { purpose: "verify_current_phone" }
+        : { sms_phone: this.phone.trim() };
+
       if (token) {
         data.captcha_token = token;
       }
@@ -287,7 +301,9 @@ export default class SmsPhoneForm extends Component {
       });
 
       this.codeSent = true;
-      this.success = i18n("sms.success.code_sent");
+      this.success = this.verifyingCurrent
+        ? i18n("sms.change_phone.current_code_sent")
+        : i18n("sms.success.code_sent");
       this.#startCooldown(result.resend_after);
       this.#resetCaptchaWidget();
     } catch (error) {
@@ -316,11 +332,27 @@ export default class SmsPhoneForm extends Component {
     this.success = null;
 
     try {
-      this.binding = await ajax("/sms/verify_code.json", {
+      const data = { sms_code: this.code.trim() };
+      if (this.verifyingCurrent) {
+        data.purpose = "verify_current_phone";
+      }
+
+      const result = await ajax("/sms/verify_code.json", {
         type: "POST",
-        data: { sms_code: this.code.trim() },
+        data,
       });
 
+      if (this.verifyingCurrent) {
+        this.verifyingCurrent = false;
+        this.codeSent = false;
+        this.code = "";
+        this.phone = "";
+        this.success = i18n("sms.change_phone.current_verified");
+        this.#resetCaptchaWidget();
+        return;
+      }
+
+      this.binding = result;
       this.editing = false;
       this.codeSent = false;
       this.code = "";
@@ -520,6 +552,8 @@ export default class SmsPhoneForm extends Component {
                 "sms.admin_view.description"
                 username=this.profileUsername
               }}
+            {{else if this.verifyingCurrent}}
+              {{i18n "sms.change_phone.verify_current_hint"}}
             {{else}}
               {{i18n "sms.description"}}
             {{/if}}
@@ -577,19 +611,25 @@ export default class SmsPhoneForm extends Component {
               {{#if this.editing}}
                 <div class="sms-phone-form">
                   <label class="control-label" for="sms-phone-number">
-                    {{i18n "sms.phone_label"}}
+                    {{#if this.verifyingCurrent}}
+                      {{i18n "sms.current_phone_label"}}
+                    {{else}}
+                      {{i18n "sms.phone_label"}}
+                    {{/if}}
                   </label>
                   <input
                     id="sms-phone-number"
                     class="input-large sms-phone-input"
                     type="tel"
                     autocomplete="tel"
-                    disabled={{this.codeSent}}
+                    disabled={{this.phoneInputDisabled}}
                     placeholder={{i18n "sms.phone_placeholder"}}
-                    value={{this.phone}}
+                    value={{this.phoneValue}}
                     {{on "input" this.onPhoneInput}}
                   />
-                  <div class="instructions">{{i18n "sms.phone_hint"}}</div>
+                  {{#unless this.verifyingCurrent}}
+                    <div class="instructions">{{i18n "sms.phone_hint"}}</div>
+                  {{/unless}}
 
                   {{#unless this.captchaRequired}}
                     <div class="instructions">{{i18n
@@ -633,6 +673,8 @@ export default class SmsPhoneForm extends Component {
                         {{i18n "sms.sending"}}
                       {{else if this.resendRemaining}}
                         {{i18n "sms.resend_in" seconds=this.resendRemaining}}
+                      {{else if this.verifyingCurrent}}
+                        {{i18n "sms.send_current_code"}}
                       {{else}}
                         {{i18n "sms.send_code"}}
                       {{/if}}
@@ -670,6 +712,8 @@ export default class SmsPhoneForm extends Component {
                       >
                         {{#if this.verifying}}
                           {{i18n "sms.verifying"}}
+                        {{else if this.verifyingCurrent}}
+                          {{i18n "sms.verify_current_phone"}}
                         {{else}}
                           {{i18n "sms.verify"}}
                         {{/if}}

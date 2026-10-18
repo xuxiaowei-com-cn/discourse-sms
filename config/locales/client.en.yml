@@ -12,6 +12,13 @@ en:
       admin_view:
         description: "Phone number linked to %{username}. Only a masked number is shown."
         not_bound: "%{username} has not bound a phone number."
+      current_phone_label: "Current phone number"
+      send_current_code: "Send code to current phone"
+      verify_current_phone: "Verify current phone"
+      change_phone:
+        verify_current_hint: "Before changing your phone number, verify the phone number currently linked to your account."
+        current_code_sent: "A verification code has been sent to your current phone number."
+        current_verified: "Current phone number verified. Enter the new phone number."
       bound_as: "Linked to %{phone}."
       not_bound: "No phone number is linked to your account yet."
       bind: "Link phone number"
@@ -44,6 +51,9 @@ en:
         code_invalid: "The verification code is incorrect."
         code_expired: "The verification code has expired. Request a new code."
         code_not_requested: "Request a verification code first."
+        current_phone_not_bound: "No phone number is bound to this account."
+        current_phone_verification_required: "Verify your current phone number before changing it."
+        current_phone_mismatch: "The verification code was requested for a different phone number."
         too_many_attempts: "Too many verification attempts. Request a new code."
         provider_unavailable: "The SMS provider is temporarily unavailable. Please try again later."
         captcha_failed: "Captcha verification failed. Please try again."

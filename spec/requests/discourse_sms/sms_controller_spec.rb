@@ -273,6 +273,85 @@ RSpec.describe DiscourseSms::SmsController do
     end
   end
 
+  describe "changing an existing phone number" do
+    let(:old_phone) { "+8613900139000" }
+
+    before do
+      DiscourseSms::PhoneBinding.create!(
+        user: user,
+        phone_number: old_phone,
+        verified_at: 1.week.ago,
+      )
+      stub_request(:post, send_url).to_return(status: 200, body: '{"ok":true}')
+      stub_request(:post, verify_url).to_return(status: 200, body: '{"success":true}')
+    end
+
+    it "requires current phone verification before sending a new code" do
+      post "/sms/send_code.json",
+           params: {
+             sms_phone: "13800138000",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(422)
+      expect(response.parsed_body["errors"].first).to eq(
+        I18n.t("sms.errors.current_phone_verification_required"),
+      )
+      expect(a_request(:post, send_url)).not_to have_been_made
+    end
+
+    it "changes the phone only after verifying the current phone" do
+      post "/sms/send_code.json",
+           params: {
+             purpose: "verify_current_phone",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(DiscourseSms::VerificationChallenge.find_by(user_id: user.id).phone_number).to eq(
+        old_phone,
+      )
+
+      post "/sms/verify_code.json",
+           params: {
+             sms_code: "123456",
+             purpose: "verify_current_phone",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["current_phone_verified"]).to eq(true)
+      expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(old_phone)
+
+      post "/sms/send_code.json",
+           params: {
+             sms_phone: "13800138000",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+
+      post "/sms/verify_code.json",
+           params: {
+             sms_code: "123456",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(phone)
+    end
+  end
+
   describe "#verify_code" do
     before do
       DiscourseSms::VerificationChallenge.issue!(
@@ -299,25 +378,6 @@ RSpec.describe DiscourseSms::SmsController do
       binding = DiscourseSms::PhoneBinding.find_by(user_id: user.id)
       expect(binding.phone_number).to eq(phone)
       expect(DiscourseSms::VerificationChallenge.count).to eq(0)
-    end
-
-    it "replaces an existing binding when the member changes phone number" do
-      DiscourseSms::PhoneBinding.create!(
-        user: user,
-        phone_number: "+8613900139000",
-        verified_at: 1.week.ago,
-      )
-
-      post "/sms/verify_code.json",
-           params: {
-             sms_code: "123456",
-           },
-           headers: {
-             "ACCEPT" => "application/json",
-           }
-
-      expect(response.status).to eq(200)
-      expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(phone)
     end
 
     it "increments attempts when the code is invalid" do

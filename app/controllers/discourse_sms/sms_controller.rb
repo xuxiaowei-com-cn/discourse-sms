@@ -22,12 +22,25 @@ module ::DiscourseSms
     end
 
     def send_code
-      phone =
-        PhoneNumber.normalize(
-          params[:sms_phone],
-          default_country_code: SiteSetting.sms_default_country_code,
-        )
-      return render_error(:phone_invalid) if phone.nil?
+      verifying_current = params[:purpose].to_s == "verify_current_phone"
+
+      if verifying_current
+        binding = PhoneBinding.for_user(current_user)
+        return render_error(:current_phone_not_bound) if binding.nil?
+
+        phone = binding.phone_number
+      else
+        phone =
+          PhoneNumber.normalize(
+            params[:sms_phone],
+            default_country_code: SiteSetting.sms_default_country_code,
+          )
+        return render_error(:phone_invalid) if phone.nil?
+
+        if PhoneBinding.verified?(current_user) && !phone_change_authorized?
+          return render_error(:current_phone_verification_required)
+        end
+      end
 
       if SiteSetting.sms_require_captcha
         begin
@@ -41,8 +54,10 @@ module ::DiscourseSms
         end
       end
 
-      existing = PhoneBinding.find_by(phone_number: phone)
-      return render_error(:phone_taken) if existing && existing.user_id != current_user.id
+      unless verifying_current
+        existing = PhoneBinding.find_by(phone_number: phone)
+        return render_error(:phone_taken) if existing && existing.user_id != current_user.id
+      end
 
       enforce_send_rate_limits!(phone)
 
@@ -64,6 +79,7 @@ module ::DiscourseSms
 
       render json: {
                success: true,
+               current_phone: verifying_current,
                masked_phone: PhoneNumber.mask(phone),
                expires_in: ttl.to_i,
                resend_after: SiteSetting.sms_resend_interval_seconds.to_i,
@@ -71,6 +87,7 @@ module ::DiscourseSms
     end
 
     def verify_code
+      verifying_current = params[:purpose].to_s == "verify_current_phone"
       code = params[:sms_code].to_s.strip
       return render_error(:code_invalid_format) if !code.match?(/\A[A-Za-z0-9]{4,20}\z/)
 
@@ -78,6 +95,14 @@ module ::DiscourseSms
       return render_error(:code_not_requested) if challenge.nil?
       return render_error(:code_expired) if challenge.expired?
       return render_error(:too_many_attempts) if challenge.attempts_exhausted?
+
+      if verifying_current
+        binding = PhoneBinding.for_user(current_user)
+        return render_error(:current_phone_not_bound) if binding.nil?
+        return render_error(:current_phone_mismatch) if challenge.phone_number != binding.phone_number
+      elsif PhoneBinding.verified?(current_user) && !phone_change_authorized?
+        return render_error(:current_phone_verification_required)
+      end
 
       RateLimiter.new(current_user, "sms-verify-hour", 60, 1.hour).performed!
 
@@ -89,7 +114,17 @@ module ::DiscourseSms
         return which if performed?
 
         if which == true
-          bind_phone!(challenge)
+          if verifying_current
+            authorize_phone_change!
+            challenge.destroy!
+            render json: {
+                     success: true,
+                     current_phone_verified: true,
+                     masked_phone: binding.masked_phone,
+                   }
+          else
+            bind_phone!(challenge)
+          end
         else
           challenge.increment!(:attempts)
           render_error(:code_invalid)
@@ -118,6 +153,7 @@ module ::DiscourseSms
         binding.save!
         challenge.destroy!
       end
+      clear_phone_change_authorization!
 
       render json: binding_json(binding)
     rescue ActiveRecord::RecordNotUnique
@@ -142,17 +178,39 @@ module ::DiscourseSms
     end
 
     def enforce_send_rate_limits!(phone)
+      phone_key = Digest::SHA256.hexdigest(phone)
       interval = SiteSetting.sms_resend_interval_seconds.to_i
       if interval.positive?
-        RateLimiter.new(current_user, "sms-send-cooldown", 1, interval).performed!
+        RateLimiter.new(
+          current_user,
+          "sms-send-cooldown-#{phone_key}",
+          1,
+          interval,
+        ).performed!
       end
 
       max = SiteSetting.sms_max_sends_per_hour.to_i
       if max.positive?
         RateLimiter.new(current_user, "sms-send-hour", max, 1.hour).performed!
-        phone_key = Digest::SHA256.hexdigest(phone)
         RateLimiter.new(nil, "sms-send-phone-#{phone_key}", max, 1.hour).performed!
       end
+    end
+
+    PHONE_CHANGE_SESSION_KEY = "sms_phone_change_authorized_at"
+
+    def phone_change_authorized?
+      authorized_at = server_session[PHONE_CHANGE_SESSION_KEY].to_i
+      return false if authorized_at <= 0
+
+      Time.zone.now.to_i - authorized_at <= SiteSetting.sms_code_ttl_minutes.to_i.minutes.to_i
+    end
+
+    def authorize_phone_change!
+      server_session[PHONE_CHANGE_SESSION_KEY] = Time.zone.now.to_i
+    end
+
+    def clear_phone_change_authorization!
+      server_session.delete(PHONE_CHANGE_SESSION_KEY)
     end
 
     def render_error(key, message: nil, status: 422)
