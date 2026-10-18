@@ -223,16 +223,53 @@ Content-Type: application/json
 当前手机号的验证状态保存在会员的服务端会话中，超过 `sms_code_ttl_minutes` 后失效；新手机号
 保存成功后会清除该授权。在新手机号验证完成前，旧绑定一直有效。
 
+## 数据库表
+
+插件会创建三张表。迁移文件位于
+`db/migrate/20261018000000_create_discourse_sms_tables.rb` 和
+`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`。
+
+### `discourse_sms_phone_bindings`
+
+每个已验证手机号的会员一行。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | integer | 主键。 |
+| `user_id` | integer | 会员 ID。唯一索引；每个账号一条绑定。 |
+| `phone_number` | string(20) | E.164 手机号。唯一索引；一个手机号只属于一个账号。 |
+| `verified_at` | datetime | 验证时间。 |
+| `created_at` / `updated_at` | datetime | Rails 时间戳。 |
+
+### `discourse_sms_verification_challenges`
+
+每个会员一条有效验证挑战；重新发送时覆盖。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | integer | 主键。 |
+| `user_id` | integer | 会员 ID。唯一索引；每个账号一条挑战。 |
+| `phone_number` | string(20) | 接收验证码的手机号。 |
+| `sent_at` | datetime | 发送验证码的时间。 |
+| `expires_at` | datetime | 挑战过期时间。有索引。 |
+| `attempts` | integer | 验证失败次数，默认 `0`。 |
+| `created_at` / `updated_at` | datetime | Rails 时间戳。 |
+
+### `discourse_sms_phone_histories`
+
+手机号事件的只追加审计历史。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | integer | 主键。 |
+| `user_id` | integer | 会员 ID。有索引，并包含 `(user_id, created_at)` 联合索引。 |
+| `phone_number` | string(20) | 事件对应的 E.164 手机号。有索引。 |
+| `event_type` | string(20) | `bind`、`unbind` 或 `verify`。 |
+| `created_at` / `updated_at` | datetime | Rails 时间戳；`created_at` 即事件时间。 |
+
 ## 手机号历史
 
-手机号相关的重要操作会写入 `discourse_sms_phone_histories`：
-
-| 字段 | 含义 |
-| --- | --- |
-| `user_id` | 发生手机号变更的会员。 |
-| `phone_number` | 事件对应的 E.164 手机号。 |
-| `event_type` | `bind`（绑定）、`unbind`（解绑）、`verify`（验证）。 |
-| `created_at` | 事件发生时间。 |
+手机号相关的重要操作会写入 `discourse_sms_phone_histories`。
 
 首次绑定、更换手机号、以及短信验证码验证成功（包括更换手机号前的当前手机号验证）都会写入历史。
 更换手机号时会为旧号码记录 `unbind`，为新号码记录 `bind` 和 `verify`。用户被删除或匿名化时，

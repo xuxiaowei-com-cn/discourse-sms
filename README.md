@@ -240,16 +240,53 @@ The current-phone verification is stored in the member's server session and expi
 `sms_code_ttl_minutes`. It is cleared after the new number is saved. The old binding stays active
 until the new number is verified.
 
+## Database schema
+
+The plugin adds three tables. Migrations are in
+`db/migrate/20261018000000_create_discourse_sms_tables.rb` and
+`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`.
+
+### `discourse_sms_phone_bindings`
+
+One row per member with a verified phone number.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | integer | Primary key. |
+| `user_id` | integer | Member ID. Unique index; one binding per account. |
+| `phone_number` | string(20) | E.164 number. Unique index; one account per number. |
+| `verified_at` | datetime | When the number was verified. |
+| `created_at` / `updated_at` | datetime | Rails timestamps. |
+
+### `discourse_sms_verification_challenges`
+
+One active challenge per member, replaced when a new code is requested.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | integer | Primary key. |
+| `user_id` | integer | Member ID. Unique index; one challenge per account. |
+| `phone_number` | string(20) | Phone number the code was sent to. |
+| `sent_at` | datetime | When the code was requested. |
+| `expires_at` | datetime | Challenge expiry. Indexed. |
+| `attempts` | integer | Failed verification attempts, default `0`. |
+| `created_at` / `updated_at` | datetime | Rails timestamps. |
+
+### `discourse_sms_phone_histories`
+
+Append-only audit history for phone events.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | integer | Primary key. |
+| `user_id` | integer | Member ID. Indexed, including a composite `(user_id, created_at)` index. |
+| `phone_number` | string(20) | E.164 number for the event. Indexed. |
+| `event_type` | string(20) | `bind`, `unbind`, or `verify`. |
+| `created_at` / `updated_at` | datetime | Rails timestamps; `created_at` is the event time. |
+
 ## Phone history
 
-Every important phone-number action is written to `discourse_sms_phone_histories`:
-
-| Column | Meaning |
-| --- | --- |
-| `user_id` | The member whose phone changed. |
-| `phone_number` | E.164 phone number for the event. |
-| `event_type` | `bind`, `unbind`, or `verify`. |
-| `created_at` | When the event happened. |
+Every important phone-number action is written to `discourse_sms_phone_histories`.
 
 Events are recorded when a phone is first bound, when an old number is replaced, and when an SMS code
 is successfully verified (including the current-phone check before a change). Replacing a number
