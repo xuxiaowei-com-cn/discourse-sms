@@ -525,7 +525,7 @@ export default class SmsPhoneForm extends Component {
                   </label>
                   <input
                     id="sms-phone-number"
-                    class="input-large"
+                    class="input-large sms-phone-input"
                     type="tel"
                     autocomplete="tel"
                     disabled={{this.codeSent}}
