@@ -21,7 +21,7 @@ one API to verify it.
 - Show a masked phone number after verification.
 - Configurable country code for members who type a number without `+`.
 - Captcha is required by default whenever a verification code is sent, and can be turned off by an administrator.
-- Optionally require phone binding before creating topics, replies, or private messages, with group and username exemptions.
+- Optionally require phone binding before creating topics, replies, or personal messages, with group and username exemptions.
 - Rate limits: resend cooldown, sends per account per hour, and sends per phone number per hour.
 - Verification challenges with a TTL and a limited number of attempts.
 - Provider authentication with a bearer token (or a custom header/scheme).
@@ -105,7 +105,7 @@ All settings are under **Admin → Settings → Plugins**.
 | --- | --- | --- |
 | `sms_enabled` | `false` | Turns the plugin on. |
 | `sms_require_captcha` | `true` | Requires a Captcha challenge before sending a code. Strongly recommended. |
-| `sms_require_phone_binding` | `false` | Requires a verified phone number before creating topics, replies, or private messages. |
+| `sms_require_phone_binding` | `false` | Requires a verified phone number before creating topics, replies, or personal messages. |
 | `sms_skip_phone_binding_groups` | `1\|2` | Groups that can skip the binding requirement. Defaults to admins and moderators. |
 | `sms_skip_phone_binding_usernames` | empty | Individual usernames that can skip the binding requirement (comma or `\|` separated). |
 | `sms_send_api_url` | empty | Absolute URL of the send-code API. |
@@ -302,7 +302,7 @@ Set `sms_require_phone_binding` to require a verified phone number before a memb
 
 - create a topic
 - reply to a topic
-- send a private message
+- send a personal message
 
 Reading and other account features remain available. Verified members are never blocked.
 
@@ -355,7 +355,7 @@ bind a phone number.
 - Rate limits apply per account, per phone number, and as a resend cooldown.
 - Phone bindings are deleted when a user is destroyed or anonymized.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
-- When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or private messages.
+- When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or personal messages.
 - Replacing a bound phone number requires entering and verifying the old number first; a mismatch is rejected. The authorization is session-scoped and expires.
 - Administrators can only see a masked phone number; the admin-only status endpoint never returns the full number.
 

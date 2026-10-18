@@ -2,7 +2,7 @@ en:
   js:
     sms:
       binding_required:
-        notice: "You need to bind a phone number before creating topics, replying, or sending private messages."
+        notice: "You need to bind a phone number before creating topics, replying, or sending personal messages."
         link: "Bind phone number"
       title: "Phone number"
       description: "Link a phone number to your account. We will send a verification code by SMS."
