@@ -25,6 +25,7 @@ en:
         code_sent: "A verification code has been sent. It may take a minute to arrive."
         verified: "Your phone number has been verified and saved."
       captcha:
+        not_required: "Captcha is not required on this site."
         hint: "Complete the captcha before requesting a code."
         required: "Please complete the captcha challenge."
         unavailable: "Captcha is not enabled or configured on this site, so phone verification is unavailable. Please contact the site administrator."

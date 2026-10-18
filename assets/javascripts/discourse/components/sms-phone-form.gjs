@@ -103,14 +103,22 @@ export default class SmsPhoneForm extends Component {
     }
   }
 
+  get captchaRequired() {
+    return Boolean(this.siteSettings.sms_require_captcha);
+  }
+
   get captchaConfigured() {
-    return Boolean(this.captchaProvider && this.captchaSiteKey);
+    return (
+      !this.captchaRequired ||
+      Boolean(this.captchaProvider && this.captchaSiteKey)
+    );
   }
 
   get showCaptchaWidget() {
     return (
-      this.captchaProvider === HCAPTCHA_PROVIDER ||
-      this.captchaProvider === RECAPTCHA_V2_PROVIDER
+      this.captchaRequired &&
+      (this.captchaProvider === HCAPTCHA_PROVIDER ||
+        this.captchaProvider === RECAPTCHA_V2_PROVIDER)
     );
   }
 
@@ -160,7 +168,10 @@ export default class SmsPhoneForm extends Component {
     this.captchaToken = null;
     this.captchaLoadFailed = false;
 
-    if (this.captchaProvider === RECAPTCHA_V3_PROVIDER) {
+    if (
+      this.captchaRequired &&
+      this.captchaProvider === RECAPTCHA_V3_PROVIDER
+    ) {
       this.#ensureCaptchaApi().catch(() => {
         this.captchaLoadFailed = true;
       });
@@ -198,7 +209,7 @@ export default class SmsPhoneForm extends Component {
       return;
     }
 
-    if (!this.captchaConfigured) {
+    if (this.captchaRequired && !this.captchaConfigured) {
       this.error = i18n("sms.captcha.unavailable");
       return;
     }
@@ -213,22 +224,28 @@ export default class SmsPhoneForm extends Component {
     this.success = null;
 
     try {
-      const token = await this.#obtainCaptchaToken();
-      if (!token) {
-        this.error = this.captchaLoadFailed
-          ? i18n("sms.captcha.load_failed")
-          : i18n("sms.captcha.required");
-        return;
+      let token = null;
+
+      if (this.captchaRequired) {
+        token = await this.#obtainCaptchaToken();
+        if (!token) {
+          this.error = this.captchaLoadFailed
+            ? i18n("sms.captcha.load_failed")
+            : i18n("sms.captcha.required");
+          return;
+        }
+
+        this.captchaLoadFailed = false;
       }
 
-      this.captchaLoadFailed = false;
+      const data = { sms_phone: this.phone.trim() };
+      if (token) {
+        data.captcha_token = token;
+      }
 
       const result = await ajax("/sms/send_code.json", {
         type: "POST",
-        data: {
-          sms_phone: this.phone.trim(),
-          captcha_token: token,
-        },
+        data,
       });
 
       this.codeSent = true;
@@ -517,27 +534,35 @@ export default class SmsPhoneForm extends Component {
                   />
                   <div class="instructions">{{i18n "sms.phone_hint"}}</div>
 
-                  {{#if this.captchaConfigured}}
-                    {{#if this.showCaptchaWidget}}
-                      <div class="sms-captcha">
-                        <div
-                          class="sms-captcha-widget"
-                          {{this.renderCaptcha}}
-                        ></div>
-                        <div class="instructions">{{i18n
-                            "sms.captcha.hint"
-                          }}</div>
-                      </div>
-                    {{/if}}
-                    {{#if this.captchaLoadFailed}}
+                  {{#unless this.captchaRequired}}
+                    <div class="instructions">{{i18n
+                        "sms.captcha.not_required"
+                      }}</div>
+                  {{/unless}}
+
+                  {{#if this.captchaRequired}}
+                    {{#if this.captchaConfigured}}
+                      {{#if this.showCaptchaWidget}}
+                        <div class="sms-captcha">
+                          <div
+                            class="sms-captcha-widget"
+                            {{this.renderCaptcha}}
+                          ></div>
+                          <div class="instructions">{{i18n
+                              "sms.captcha.hint"
+                            }}</div>
+                        </div>
+                      {{/if}}
+                      {{#if this.captchaLoadFailed}}
+                        <div class="alert alert-error">
+                          {{i18n "sms.captcha.load_failed"}}
+                        </div>
+                      {{/if}}
+                    {{else}}
                       <div class="alert alert-error">
-                        {{i18n "sms.captcha.load_failed"}}
+                        {{i18n "sms.captcha.unavailable"}}
                       </div>
                     {{/if}}
-                  {{else}}
-                    <div class="alert alert-error">
-                      {{i18n "sms.captcha.unavailable"}}
-                    </div>
                   {{/if}}
 
                   <div class="sms-phone-actions">

@@ -12,6 +12,7 @@ RSpec.describe DiscourseSms::SmsController do
 
   before do
     SiteSetting.sms_enabled = true
+    SiteSetting.sms_require_captcha = true
     SiteSetting.sms_send_api_url = send_url
     SiteSetting.sms_verify_api_url = verify_url
     SiteSetting.sms_auth_token = "token"
@@ -100,6 +101,23 @@ RSpec.describe DiscourseSms::SmsController do
       challenge = DiscourseSms::VerificationChallenge.find_by(user_id: user.id)
       expect(challenge.phone_number).to eq(phone)
       expect(challenge.expires_at).to be > Time.zone.now
+    end
+
+    it "can send a code without a captcha when the requirement is disabled" do
+      SiteSetting.sms_require_captcha = false
+
+      post "/sms/send_code.json",
+           params: {
+             sms_phone: "13800138000",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["success"]).to eq(true)
+      expect(DiscourseSms::Captcha).not_to have_received(:verify!)
+      expect(a_request(:post, send_url)).to have_been_made.once
     end
 
     it "requires a captcha token" do

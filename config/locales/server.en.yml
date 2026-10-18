@@ -18,6 +18,7 @@ en:
 
   site_settings:
     sms_enabled: "Enable phone number verification through an external SMS provider."
+    sms_require_captcha: "Require a Captcha challenge before an SMS verification code is sent. It is strongly recommended to keep this enabled. Requires the discourse-captcha plugin to be enabled and configured."
     sms_send_api_url: "URL of the external API that sends an SMS verification code. The request body contains the phone number."
     sms_verify_api_url: "URL of the external API that verifies an SMS verification code. The request body contains the phone number and the code."
     sms_auth_token: "Token sent with every SMS API request. Leave blank if the provider does not require authentication."

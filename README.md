@@ -7,10 +7,11 @@ external SMS provider. The provider contract is intentionally small: one API to 
 one API to verify it.
 
 > [!IMPORTANT]
-> Sending an SMS code requires the official
+> By default, sending an SMS code requires the official
 > [`discourse-captcha`](https://meta.discourse.org/t/discourse-captcha/291383) plugin to be enabled
-> and configured with hCaptcha, reCAPTCHA v2, or reCAPTCHA v3. Without captcha the send endpoint
-> refuses to call the SMS provider.
+> and configured with hCaptcha, reCAPTCHA v2, or reCAPTCHA v3. The requirement can be turned off
+> with the `sms require captcha` setting, but keeping it enabled is strongly recommended to prevent
+> SMS abuse.
 
 ## Features
 
@@ -19,7 +20,7 @@ one API to verify it.
 - One verified phone number per account and one account per phone number.
 - Show a masked phone number after verification.
 - Configurable country code for members who type a number without `+`.
-- Captcha is mandatory whenever a verification code is sent.
+- Captcha is required by default whenever a verification code is sent, and can be turned off by an administrator.
 - Rate limits: resend cooldown, sends per account per hour, and sends per phone number per hour.
 - Verification challenges with a TTL and a limited number of attempts.
 - Provider authentication with a bearer token (or a custom header/scheme).
@@ -32,17 +33,17 @@ one API to verify it.
 | Requirement | Details |
 | --- | --- |
 | Discourse | 3.2 or newer |
-| Captcha | The bundled `discourse-captcha` plugin, enabled with a configured provider |
+| Captcha | The bundled `discourse-captcha` plugin, enabled with a configured provider (required while `sms require captcha` is on, which is the default) |
 | SMS service | Two HTTP APIs: send a code and verify a code |
 | Ruby / Rails | Provided by Discourse |
 
 ## How it works
 
 1. A signed-in member opens **Preferences → Security** and chooses **Link phone number**.
-2. The browser renders the configured captcha and sends the phone number plus the captcha token
-   to `POST /sms/send_code`.
-3. The server verifies the captcha with the provider, applies rate limits, and calls the external
-   **send** API.
+2. The browser renders the configured captcha (unless the requirement is disabled) and sends the
+   phone number plus the captcha token to `POST /sms/send_code`.
+3. When required, the server verifies the captcha with the provider. It then applies rate limits and
+   calls the external **send** API.
 4. A verification challenge is stored for that account (the SMS code itself is never stored by
    Discourse).
 5. The member enters the code from the SMS. The browser calls `POST /sms/verify_code`.
@@ -70,7 +71,7 @@ Then, in **Admin → Plugins → discourse-sms**:
 1. Enable `sms enabled`.
 2. Fill in the send and verify API URLs and the authentication token.
 3. Make sure **Captcha** is enabled under **Admin → Settings → Security** (or the Captcha plugin
-   settings) and that a provider and its keys are configured.
+   settings) and that a provider and its keys are configured. Keep `sms require captcha` enabled.
 
 ## Configuration
 
@@ -79,6 +80,7 @@ All settings are under **Admin → Settings → Plugins**.
 | Setting | Default | Description |
 | --- | --- | --- |
 | `sms_enabled` | `false` | Turns the plugin on. |
+| `sms_require_captcha` | `true` | Requires a Captcha challenge before sending a code. Strongly recommended. |
 | `sms_send_api_url` | empty | Absolute URL of the send-code API. |
 | `sms_verify_api_url` | empty | Absolute URL of the verify-code API. |
 | `sms_auth_token` | empty | Token sent with every provider request. Stored as a secret. |
@@ -172,8 +174,12 @@ Additional fields can be added with `sms_extra_params`, for example:
 
 ## Captcha
 
-Discourse's captcha support lives in the bundled `discourse-captcha` plugin. The plugin uses the
-same settings:
+`sms_require_captcha` controls whether a captcha is needed before an SMS code is sent. It defaults
+to `true`. When it is off, the send endpoint skips captcha verification and the browser does not
+render a captcha widget; rate limits still apply.
+
+When the requirement is on, Discourse's captcha support lives in the bundled `discourse-captcha`
+plugin. The plugin uses the same settings:
 
 - `discourse_captcha_enabled`
 - `discourse_captcha_provider` (`hcaptcha`, `recaptcha_v2`, `recaptcha_v3`)
@@ -182,8 +188,8 @@ same settings:
 
 The browser renders the widget for hCaptcha/reCAPTCHA v2, or executes reCAPTCHA v3 with the
 `signup` action, and sends the resulting token as `captcha_token`. The server verifies the token
-with the provider before any SMS request is made. If captcha is disabled, not configured, or the
-token is missing/invalid, the send request is rejected.
+with the provider before any SMS request is made. If the requirement is enabled but captcha is
+disabled, not configured, or the token is missing/invalid, the send request is rejected.
 
 ## Member experience
 
@@ -191,7 +197,7 @@ token is missing/invalid, the send request is rejected.
 - The masked number is displayed after verification.
 - **Change phone number** starts the same send/verify flow; the old binding stays active until the
   new number is verified.
-- Changing the phone number requires a new captcha and a new SMS code.
+- Changing the phone number requires a new SMS code; when `sms_require_captcha` is on, a new captcha is required too.
 
 ## Troubleshooting
 
@@ -206,6 +212,8 @@ token is missing/invalid, the send request is rejected.
   `sms_verify_success_value`.
 - **Members cannot request a second code** — check `sms_resend_interval_seconds` and
   `sms_max_sends_per_hour`.
+- **Captcha blocks sending** — keep `sms require captcha` enabled in production. It can be disabled
+  temporarily for diagnostics, but rate limits remain the only abuse protection in that mode.
 
 ## Security notes
 
@@ -216,7 +224,7 @@ token is missing/invalid, the send request is rejected.
 - Challenges expire and are limited by `sms_max_verification_attempts`.
 - Rate limits apply per account, per phone number, and as a resend cooldown.
 - Phone bindings are deleted when a user is destroyed or anonymized.
-- The send endpoint refuses to run unless captcha is enabled and configured.
+- When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
 
 ## Development
 

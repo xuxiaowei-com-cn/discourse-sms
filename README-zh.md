@@ -6,9 +6,10 @@
 约定非常小：一个发送验证码 API，一个校验验证码 API。
 
 > [!IMPORTANT]
-> 发送短信验证码要求启用并配置官方
+> 默认情况下，发送短信验证码要求启用并配置官方
 > [`discourse-captcha`](https://meta.discourse.org/t/discourse-captcha/291383) 插件（hCaptcha、
-> reCAPTCHA v2 或 reCAPTCHA v3）。未启用验证码时，发送接口不会调用短信服务商。
+> reCAPTCHA v2 或 reCAPTCHA v3）。管理员可通过 `sms require captcha` 设置关闭该要求，但强烈建议
+> 保持开启，以防止短信接口被滥用。
 
 ## 功能
 
@@ -17,7 +18,7 @@
 - 一个账号只能绑定一个已验证手机号，一个手机号只能绑定一个账号。
 - 验证成功后展示脱敏手机号。
 - 可配置默认国家区号，会员输入不带 `+` 的号码时自动补全。
-- 每次发送验证码都必须通过验证码（Captcha）校验。
+- 默认每次发送验证码都必须通过人机验证（Captcha），管理员可关闭该要求。
 - 限流：重发冷却、每账号每小时发送上限、每手机号每小时发送上限。
 - 验证挑战具有有效期和最大尝试次数。
 - 支持 Bearer Token 或自定义请求头/前缀认证。
@@ -30,15 +31,16 @@
 | 要求 | 说明 |
 | --- | --- |
 | Discourse | 3.2 或更高版本 |
-| 验证码 | 内置 `discourse-captcha` 插件已启用并配置服务商 |
+| 人机验证 | 内置 `discourse-captcha` 插件已启用并配置服务商（`sms require captcha` 开启时需要，默认开启） |
 | 短信服务 | 提供发送验证码和校验验证码两个 HTTP API |
 | Ruby / Rails | 由 Discourse 提供 |
 
 ## 工作流程
 
 1. 已登录会员打开**偏好设置 → 安全性**，点击**绑定手机号**。
-2. 浏览器渲染站点配置的验证码，将手机号和验证码 Token 发送到 `POST /sms/send_code`。
-3. 服务端向验证码服务商校验 Token，执行限流，然后调用外部**发送** API。
+2. 浏览器渲染站点配置的人机验证（若该要求已开启），将手机号和 Captcha Token 发送到
+   `POST /sms/send_code`。
+3. 需要时，服务端向人机验证服务商校验 Token；随后执行限流并调用外部**发送** API。
 4. 为该账号保存一条验证挑战记录（Discourse 不保存短信验证码本身）。
 5. 会员输入短信验证码，浏览器调用 `POST /sms/verify_code`。
 6. 服务端调用外部**校验** API。校验成功后保存手机号绑定并删除挑战记录。
@@ -63,7 +65,8 @@ bin/rails db:migrate
 
 1. 启用 `sms enabled`。
 2. 填写发送 API、校验 API 地址和认证 Token。
-3. 确认**管理 → 设置 → 安全**（或 Captcha 插件设置）中已启用验证码，并配置好服务商和密钥。
+3. 确认**管理 → 设置 → 安全**（或 Captcha 插件设置）中已启用验证码，并配置好服务商和密钥；保持
+   `sms require captcha` 开启。
 
 ## 配置项
 
@@ -72,6 +75,7 @@ bin/rails db:migrate
 | 设置 | 默认值 | 说明 |
 | --- | --- | --- |
 | `sms_enabled` | `false` | 是否启用插件。 |
+| `sms_require_captcha` | `true` | 发送验证码前是否要求人机验证（Captcha）。强烈建议保持开启。 |
 | `sms_send_api_url` | 空 | 发送验证码 API 的完整 URL。 |
 | `sms_verify_api_url` | 空 | 校验验证码 API 的完整 URL。 |
 | `sms_auth_token` | 空 | 每次请求短信服务商时携带的 Token，作为密钥保存。 |
@@ -162,7 +166,10 @@ Content-Type: application/json
 
 ## 验证码
 
-Discourse 的验证码功能由内置 `discourse-captcha` 插件提供。本插件复用以下设置：
+`sms_require_captcha` 控制发送短信验证码前是否需要人机验证，默认开启。关闭后，发送接口会跳过
+人机验证，浏览器也不再渲染验证码组件；限流仍然生效。
+
+该要求开启时，Discourse 的人机验证功能由内置 `discourse-captcha` 插件提供。本插件复用以下设置：
 
 - `discourse_captcha_enabled`
 - `discourse_captcha_provider`（`hcaptcha`、`recaptcha_v2`、`recaptcha_v3`）
@@ -170,15 +177,15 @@ Discourse 的验证码功能由内置 `discourse-captcha` 插件提供。本插�
 - reCAPTCHA v3 的 `recaptcha_v3_score_threshold`
 
 浏览器会为 hCaptcha/reCAPTCHA v2 渲染组件，或为 reCAPTCHA v3 以 `signup` action 执行验证，
-并将 Token 作为 `captcha_token` 提交。服务端在调用任何短信接口前向验证码服务商校验该 Token。
-验证码未启用、未配置，或 Token 缺失/无效时，发送请求会被拒绝。
+并将 Token 作为 `captcha_token` 提交。该要求开启时，服务端在调用任何短信接口前向验证码服务商
+校验该 Token；验证码未启用、未配置，或 Token 缺失/无效时，发送请求会被拒绝。
 
 ## 会员体验
 
 - **偏好设置 → 安全性**中显示是否已绑定手机号。
 - 验证成功后显示脱敏手机号。
 - **更换手机号**使用相同的发送/校验流程；在新手机号验证成功前，旧绑定保持有效。
-- 更换手机号需要重新完成验证码并接收新的短信验证码。
+- 更换手机号需要接收新的短信验证码；`sms_require_captcha` 开启时还需要重新完成人机验证。
 
 ## 常见问题
 
@@ -192,6 +199,8 @@ Discourse 的验证码功能由内置 `discourse-captcha` 插件提供。本插�
   `sms_verify_success_value`。
 - **会员无法再次获取验证码** — 检查 `sms_resend_interval_seconds` 和
   `sms_max_sends_per_hour`。
+- **人机验证阻止发送** — 生产环境请保持 `sms require captcha` 开启。可以临时关闭用于排查，但
+  此模式下只剩限流作为防滥用手段。
 
 ## 安全说明
 
@@ -202,7 +211,7 @@ Discourse 的验证码功能由内置 `discourse-captcha` 插件提供。本插�
 - 挑战会过期，并受 `sms_max_verification_attempts` 限制。
 - 限流按账号、手机号和重发冷却生效。
 - 用户被删除或匿名化时会删除手机号绑定。
-- 验证码未启用或未配置时，发送接口拒绝执行。
+- `sms_require_captcha` 开启时，人机验证未启用或未配置会拒绝发送。
 
 ## 开发
 

@@ -20,14 +20,16 @@ module ::DiscourseSms
         )
       return render_error(:phone_invalid) if phone.nil?
 
-      begin
-        Captcha.verify!(params[:captcha_token], remote_ip: request.remote_ip)
-      rescue Captcha::NotConfigured
-        return render_error(:captcha_not_configured)
-      rescue Captcha::VerificationFailed
-        return render_error(:captcha_failed)
-      rescue Captcha::Unavailable
-        return render_error(:captcha_unavailable)
+      if SiteSetting.sms_require_captcha
+        begin
+          Captcha.verify!(params[:captcha_token], remote_ip: request.remote_ip)
+        rescue Captcha::NotConfigured
+          return render_error(:captcha_not_configured)
+        rescue Captcha::VerificationFailed
+          return render_error(:captcha_failed)
+        rescue Captcha::Unavailable
+          return render_error(:captcha_unavailable)
+        end
       end
 
       existing = PhoneBinding.find_by(phone_number: phone)

@@ -18,6 +18,7 @@ zh_CN:
 
   site_settings:
     sms_enabled: "启用通过外部短信服务验证手机号。"
+    sms_require_captcha: "发送短信验证码前要求完成人机验证（Captcha）。强烈建议保持开启。需要启用并配置 discourse-captcha 插件。"
     sms_send_api_url: "发送短信验证码的外部 API 地址。请求体中包含手机号。"
     sms_verify_api_url: "校验短信验证码的外部 API 地址。请求体中包含手机号和验证码。"
     sms_auth_token: "每次请求短信 API 时携带的认证 Token。如果服务商不需要认证可留空。"
