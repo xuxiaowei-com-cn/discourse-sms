@@ -1,0 +1,64 @@
+plugins:
+  sms_enabled:
+    default: false
+    client: true
+  sms_send_api_url:
+    default: ""
+  sms_verify_api_url:
+    default: ""
+  sms_auth_token:
+    default: ""
+    secret: true
+  sms_auth_header:
+    default: "Authorization"
+  sms_auth_scheme:
+    default: "Bearer"
+  sms_request_format:
+    default: "json"
+    type: enum
+    choices:
+      - json
+      - form
+  sms_request_timeout_seconds:
+    default: 10
+    min: 1
+    max: 60
+  sms_phone_param:
+    default: "phone"
+  sms_code_param:
+    default: "code"
+  sms_purpose:
+    default: "bind_phone"
+  sms_extra_params:
+    default: ""
+  sms_default_country_code:
+    default: "86"
+    client: true
+  sms_code_ttl_minutes:
+    default: 10
+    min: 1
+    max: 60
+  sms_resend_interval_seconds:
+    default: 60
+    min: 0
+    max: 3600
+  sms_max_verification_attempts:
+    default: 5
+    min: 1
+    max: 20
+  sms_max_sends_per_hour:
+    default: 10
+    min: 1
+    max: 100
+  sms_send_success_json_path:
+    default: ""
+  sms_send_success_value:
+    default: ""
+  sms_verify_success_json_path:
+    default: ""
+  sms_verify_success_value:
+    default: ""
+  sms_error_message_json_path:
+    default: "message"
+  sms_debug_logging:
+    default: false
