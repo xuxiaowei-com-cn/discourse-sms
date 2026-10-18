@@ -237,7 +237,9 @@ bind a phone number.
 
 ## Member experience
 
-- **Preferences → Security** shows whether a phone number is linked.
+- **Preferences → Security** shows whether a phone number is linked. The management section is
+  only shown on the member's own preferences page; staff viewing another member's security page do
+  not see their own number there.
 - The masked number is displayed after verification.
 - **Change phone number** starts the same send/verify flow; the old binding stays active until the
   new number is verified.

@@ -18,6 +18,7 @@ const RECAPTCHA_V3_PROVIDER = "recaptcha_v3";
 export default class SmsPhoneForm extends Component {
   @service siteSettings;
   @service currentUser;
+  @service router;
 
   @tracked loading = true;
   @tracked binding = { bound: false };
@@ -69,10 +70,24 @@ export default class SmsPhoneForm extends Component {
     return Boolean(this.siteSettings.sms_enabled);
   }
 
+  get profileUsername() {
+    const path = this.router.currentURL || window.location.pathname;
+    const match = path?.match(
+      /(?:^|\/)u\/([^/]+)\/preferences\/security(?:\?|$)/
+    );
+    return match ? decodeURIComponent(match[1]).toLowerCase() : null;
+  }
+
   get canManage() {
+    const currentUsername = (
+      this.currentUser?.username_lower || this.currentUser?.username
+    )?.toLowerCase();
+
     return Boolean(
       this.currentUser?.id &&
-      (!this.args.model || this.args.model.id === this.currentUser.id)
+      currentUsername &&
+      (!this.args.model || this.args.model.id === this.currentUser.id) &&
+      (!this.profileUsername || this.profileUsername === currentUsername)
     );
   }
 
