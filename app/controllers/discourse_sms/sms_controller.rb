@@ -121,6 +121,11 @@ module ::DiscourseSms
 
         if which == true
           if verifying_current
+            PhoneHistory.record!(
+              user: current_user,
+              phone_number: binding.phone_number,
+              event_type: "verify",
+            )
             authorize_phone_change!
             challenge.destroy!
             render json: {
@@ -152,6 +157,7 @@ module ::DiscourseSms
 
     def bind_phone!(challenge)
       binding = PhoneBinding.find_or_initialize_by(user_id: current_user.id)
+      previous_phone = binding.persisted? ? binding.phone_number_was : nil
       binding.phone_number = challenge.phone_number
       binding.verified_at = Time.zone.now
 
@@ -159,6 +165,29 @@ module ::DiscourseSms
         binding.save!
         challenge.destroy!
       end
+
+      if previous_phone.present? && previous_phone != binding.phone_number
+        PhoneHistory.record!(
+          user: current_user,
+          phone_number: previous_phone,
+          event_type: "unbind",
+        )
+      end
+
+      if previous_phone != binding.phone_number
+        PhoneHistory.record!(
+          user: current_user,
+          phone_number: binding.phone_number,
+          event_type: "bind",
+        )
+      end
+
+      PhoneHistory.record!(
+        user: current_user,
+        phone_number: binding.phone_number,
+        event_type: "verify",
+      )
+
       clear_phone_change_authorization!
 
       render json: binding_json(binding)

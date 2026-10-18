@@ -28,6 +28,7 @@ one API to verify it.
 - Provider success detection through HTTP status or a configurable JSON path.
 - Server-side verification only: the provider token is never exposed to the browser.
 - Binding data is removed when a user is destroyed or anonymized.
+- An append-only phone history records bind, unbind, and verify events.
 
 ## Requirements
 
@@ -230,6 +231,25 @@ A member cannot replace a bound phone number directly:
 The current-phone verification is stored in the member's server session and expires after
 `sms_code_ttl_minutes`. It is cleared after the new number is saved. The old binding stays active
 until the new number is verified.
+
+## Phone history
+
+Every important phone-number action is written to `discourse_sms_phone_histories`:
+
+| Column | Meaning |
+| --- | --- |
+| `user_id` | The member whose phone changed. |
+| `phone_number` | E.164 phone number for the event. |
+| `event_type` | `bind`, `unbind`, or `verify`. |
+| `created_at` | When the event happened. |
+
+Events are recorded when a phone is first bound, when an old number is replaced, and when an SMS code
+is successfully verified (including the current-phone check before a change). Replacing a number
+produces `unbind` for the old number and `bind`/`verify` for the new number. History rows are deleted
+together with the binding when a user is destroyed or anonymized.
+
+History is currently stored for auditing and can be queried from the database or Rails console; it
+does not add a member-facing UI.
 
 ## Forced phone binding
 

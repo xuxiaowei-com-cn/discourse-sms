@@ -367,6 +367,14 @@ RSpec.describe DiscourseSms::SmsController do
 
       expect(response.status).to eq(200)
       expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(phone)
+      expect(DiscourseSms::PhoneHistory.order(:id).pluck(:event_type, :phone_number)).to eq(
+        [
+          ["verify", old_phone],
+          ["unbind", old_phone],
+          ["bind", phone],
+          ["verify", phone],
+        ],
+      )
     end
   end
 
@@ -396,6 +404,9 @@ RSpec.describe DiscourseSms::SmsController do
       binding = DiscourseSms::PhoneBinding.find_by(user_id: user.id)
       expect(binding.phone_number).to eq(phone)
       expect(DiscourseSms::VerificationChallenge.count).to eq(0)
+      expect(DiscourseSms::PhoneHistory.order(:id).pluck(:event_type, :phone_number)).to eq(
+        [["bind", phone], ["verify", phone]],
+      )
     end
 
     it "increments attempts when the code is invalid" do

@@ -22,6 +22,7 @@ require_relative "lib/discourse_sms/engine"
 
 after_initialize do
   require_relative "app/models/discourse_sms/phone_binding"
+  require_relative "app/models/discourse_sms/phone_history"
   require_relative "app/models/discourse_sms/verification_challenge"
   require_relative "lib/discourse_sms/phone_verification"
   require_relative "lib/discourse_sms/guardian_extension"
@@ -55,11 +56,13 @@ after_initialize do
   # Do not keep phone numbers around after an account is removed or anonymized.
   on(:user_destroyed) do |user|
     DiscourseSms::PhoneBinding.where(user_id: user.id).delete_all
+    DiscourseSms::PhoneHistory.where(user_id: user.id).delete_all
     DiscourseSms::VerificationChallenge.where(user_id: user.id).delete_all
   end
 
   on(:user_anonymized) do |user:, **|
     DiscourseSms::PhoneBinding.where(user_id: user.id).delete_all
+    DiscourseSms::PhoneHistory.where(user_id: user.id).delete_all
     DiscourseSms::VerificationChallenge.where(user_id: user.id).delete_all
   end
 end
