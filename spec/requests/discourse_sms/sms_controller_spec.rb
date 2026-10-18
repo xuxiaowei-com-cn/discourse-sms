@@ -67,15 +67,15 @@ RSpec.describe DiscourseSms::SmsController do
       )
     end
 
-    it "allows an admin to view another member's full phone number" do
+    it "allows an admin to view another member's masked phone number" do
       sign_in(admin)
 
       get "/sms/users/#{other_user.username}/status.json"
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["username"]).to eq(other_user.username)
-      expect(response.parsed_body["phone_number"]).to eq("+8618300000001")
       expect(response.parsed_body["masked_phone"]).to eq("+8618****0001")
+      expect(response.parsed_body).not_to have_key("phone_number")
     end
 
     it "rejects a non-admin member" do

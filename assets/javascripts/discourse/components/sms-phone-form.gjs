@@ -532,11 +532,7 @@ export default class SmsPhoneForm extends Component {
               {{#if this.binding.bound}}
                 <div class="sms-phone-status">
                   <span class="sms-phone-number">
-                    {{#if this.viewingOtherUser}}
-                      {{this.binding.phone_number}}
-                    {{else}}
-                      {{this.binding.masked_phone}}
-                    {{/if}}
+                    {{this.binding.masked_phone}}
                   </span>
                   <span class="sms-phone-badge">{{i18n
                       "sms.status.verified"

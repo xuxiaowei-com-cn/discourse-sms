@@ -18,10 +18,7 @@ module ::DiscourseSms
       raise Discourse::NotFound if user.nil?
 
       binding = PhoneBinding.for_user(user)
-      render json: binding_json(binding).merge(
-               username: user.username,
-               phone_number: binding&.phone_number,
-             )
+      render json: binding_json(binding).merge(username: user.username)
     end
 
     def send_code
