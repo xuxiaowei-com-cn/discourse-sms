@@ -22,7 +22,7 @@ module ::DiscourseSms
       response =
         post(
           url_for(SiteSetting.sms_send_api_url),
-          payload(phone: phone),
+          payload(phone: phone, user: user),
           label: "send_code",
           user_id: user&.id,
         )
@@ -135,7 +135,7 @@ module ::DiscourseSms
       end
     end
 
-    def payload(phone:, code: nil)
+    def payload(phone:, code: nil, user: nil)
       phone_param = SiteSetting.sms_phone_param.to_s.strip
       code_param = SiteSetting.sms_code_param.to_s.strip
 
@@ -143,6 +143,14 @@ module ::DiscourseSms
       raise ConfigurationError.new("Code parameter name is blank") if code && code_param.blank?
 
       data = extra_params
+
+      if user
+        user_id_param = SiteSetting.sms_user_id_param.to_s.strip
+        email_param = SiteSetting.sms_email_param.to_s.strip
+        data[user_id_param] = user.id if user_id_param.present?
+        data[email_param] = user.email if email_param.present? && user.email.present?
+      end
+
       data[phone_param] = phone
       data[code_param] = code if code
       data["purpose"] = SiteSetting.sms_purpose.to_s.strip if SiteSetting.sms_purpose.present?

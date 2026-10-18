@@ -117,6 +117,8 @@ All settings are under **Admin → Settings → Plugins**.
 | `sms_request_timeout_seconds` | `10` | Per-request timeout. |
 | `sms_phone_param` | `phone` | Name of the phone field. |
 | `sms_code_param` | `code` | Name of the code field. |
+| `sms_user_id_param` | `user_id` | Name of the member ID field in the send request. Leave blank to omit it. |
+| `sms_email_param` | `email` | Name of the member email field in the send request. Leave blank to omit it. |
 | `sms_purpose` | `bind_phone` | Value of the `purpose` field. Leave blank to omit it. |
 | `sms_extra_params` | empty | JSON object merged into every request body. |
 | `sms_default_country_code` | `86` | Country code added when a member omits `+`. |
@@ -144,10 +146,16 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
+  "user_id": 123,
+  "email": "member@example.com",
   "phone": "+8613800138000",
   "purpose": "bind_phone"
 }
 ```
+
+The send request also carries the member's ID and email so the provider can identify the account.
+Use `sms_user_id_param` and `sms_email_param` to rename or omit those fields. The verify request only
+contains the phone number and code.
 
 The provider generates the code and delivers it by SMS. Because Discourse does not store the code,
 the same provider must be able to verify it.
@@ -192,7 +200,7 @@ Use `sms_send_success_json_path = code` and `sms_send_success_value = 0`.
 
 Use `sms_verify_success_json_path = data.valid` and `sms_verify_success_value = true`.
 
-If your provider expects different field names, change `sms_phone_param` and `sms_code_param`.
+If your provider expects different field names, change `sms_phone_param`, `sms_code_param`, `sms_user_id_param`, and `sms_email_param`.
 Additional fields can be added with `sms_extra_params`, for example:
 
 ```json
@@ -302,6 +310,7 @@ bind a phone number.
 ## Security notes
 
 - The external API token is a Discourse secret setting and is never sent to the browser.
+- The send request includes the member ID and email; configure blank field names if the provider must not receive them.
 - Verification codes are never stored in the database.
 - A phone number can belong to only one account (database unique indexes).
 - Only one active challenge exists per account; a new send replaces the previous challenge.

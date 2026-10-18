@@ -110,6 +110,8 @@ sv restart unicorn
 | `sms_request_timeout_seconds` | `10` | 单次请求超时时间。 |
 | `sms_phone_param` | `phone` | 手机号字段名。 |
 | `sms_code_param` | `code` | 验证码字段名。 |
+| `sms_user_id_param` | `user_id` | 发送请求中会员 ID 字段名。留空则不发送。 |
+| `sms_email_param` | `email` | 发送请求中会员邮箱字段名。留空则不发送。 |
 | `sms_purpose` | `bind_phone` | `purpose` 字段的值。留空则不发送该字段。 |
 | `sms_extra_params` | 空 | 合并到每次请求体中的 JSON 对象。 |
 | `sms_default_country_code` | `86` | 会员未输入 `+` 时使用的国家区号。 |
@@ -137,10 +139,15 @@ Authorization: Bearer <token>
 Content-Type: application/json
 
 {
+  "user_id": 123,
+  "email": "member@example.com",
   "phone": "+8613800138000",
   "purpose": "bind_phone"
 }
 ```
+
+发送请求还会携带会员 ID 和邮箱，便于服务商识别账号。可通过 `sms_user_id_param` 和
+`sms_email_param` 修改字段名或留空以停止发送。校验请求只包含手机号和验证码。
 
 验证码由服务商生成并通过短信发送。由于 Discourse 不保存验证码，必须由同一服务商负责校验。
 
@@ -182,7 +189,7 @@ Content-Type: application/json
 
 配置 `sms_verify_success_json_path = data.valid`，`sms_verify_success_value = true`。
 
-如果服务商使用不同的字段名，可修改 `sms_phone_param` 和 `sms_code_param`。额外字段可通过
+如果服务商使用不同的字段名，可修改 `sms_phone_param`、`sms_code_param`、`sms_user_id_param` 和 `sms_email_param`。额外字段可通过
 `sms_extra_params` 添加，例如：
 
 ```json
@@ -278,6 +285,7 @@ Content-Type: application/json
 ## 安全说明
 
 - 外部 API Token 是 Discourse 密钥设置，不会下发到浏览器。
+- 发送请求会携带会员 ID 和邮箱；如服务商不应接收，可将对应字段名留空。
 - 验证码不会保存到数据库。
 - 一个手机号只能属于一个账号（数据库唯一索引）。
 - 每个账号同时只有一个有效挑战；再次发送会替换旧挑战。

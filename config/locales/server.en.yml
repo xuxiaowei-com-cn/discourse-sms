@@ -35,6 +35,8 @@ en:
     sms_request_timeout_seconds: "Timeout in seconds for each SMS provider request."
     sms_phone_param: "Name of the phone number field in the SMS provider request body."
     sms_code_param: "Name of the verification code field in the verification request body."
+    sms_user_id_param: "Name of the member ID field included in the send request body. Leave blank to omit it."
+    sms_email_param: "Name of the member email field included in the send request body. Leave blank to omit it."
     sms_purpose: "Value sent as <code>purpose</code> in every request. Leave blank to omit the field."
     sms_extra_params: "Optional JSON object merged into every SMS provider request, for example <code>{\"appId\":\"123\"}</code>."
     sms_default_country_code: "Country calling code used when a member enters a phone number without a leading <code>+</code>."

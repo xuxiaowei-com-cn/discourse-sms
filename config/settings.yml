@@ -39,6 +39,10 @@ plugins:
     default: "phone"
   sms_code_param:
     default: "code"
+  sms_user_id_param:
+    default: "user_id"
+  sms_email_param:
+    default: "email"
   sms_purpose:
     default: "bind_phone"
   sms_extra_params:

@@ -35,6 +35,8 @@ zh_CN:
     sms_request_timeout_seconds: "每次请求短信服务商的超时时间（秒）。"
     sms_phone_param: "短信服务请求体中手机号字段的名称。"
     sms_code_param: "校验请求体中验证码字段的名称。"
+    sms_user_id_param: "发送请求体中会员 ID 字段的名称。留空则不发送该字段。"
+    sms_email_param: "发送请求体中会员邮箱字段的名称。留空则不发送该字段。"
     sms_purpose: "每次请求中以 <code>purpose</code> 字段发送的值。留空则不发送该字段。"
     sms_extra_params: "合并到每次短信服务请求中的可选 JSON 对象，例如 <code>{\"appId\":\"123\"}</code>。"
     sms_default_country_code: "会员输入不带 <code>+</code> 的手机号时使用的国家区号。"

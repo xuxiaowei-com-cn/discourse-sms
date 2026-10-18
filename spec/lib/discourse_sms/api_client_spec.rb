@@ -3,6 +3,8 @@
 require "rails_helper"
 
 RSpec.describe DiscourseSms::ApiClient do
+  fab!(:user)
+
   let(:send_url) { "https://sms.example.com/send" }
   let(:verify_url) { "https://sms.example.com/verify" }
   let(:phone) { "+8613800138000" }
@@ -17,6 +19,8 @@ RSpec.describe DiscourseSms::ApiClient do
     SiteSetting.sms_request_timeout_seconds = 5
     SiteSetting.sms_phone_param = "phone"
     SiteSetting.sms_code_param = "code"
+    SiteSetting.sms_user_id_param = "user_id"
+    SiteSetting.sms_email_param = "email"
     SiteSetting.sms_purpose = "bind_phone"
     SiteSetting.sms_extra_params = ""
     SiteSetting.sms_send_success_json_path = ""
@@ -37,6 +41,35 @@ RSpec.describe DiscourseSms::ApiClient do
           JSON.parse(request.body) == { "phone" => phone, "purpose" => "bind_phone" } &&
             request.headers["Authorization"] == "Bearer token" &&
             request.headers["Content-Type"] == "application/json"
+        end,
+      ).to have_been_made.once
+    end
+
+    it "includes the member ID and email in the send payload" do
+      stub_request(:post, send_url).to_return(status: 200, body: "")
+
+      described_class.new.send_code(phone: phone, user: user)
+
+      expect(
+        a_request(:post, send_url).with do |request|
+          body = JSON.parse(request.body)
+          body["user_id"] == user.id && body["email"] == user.email
+        end,
+      ).to have_been_made.once
+    end
+
+    it "supports custom member field names" do
+      SiteSetting.sms_user_id_param = "uid"
+      SiteSetting.sms_email_param = "mail"
+      stub_request(:post, send_url).to_return(status: 200, body: "")
+
+      described_class.new.send_code(phone: phone, user: user)
+
+      expect(
+        a_request(:post, send_url).with do |request|
+          body = JSON.parse(request.body)
+          body["uid"] == user.id && body["mail"] == user.email &&
+            !body.key?("user_id") && !body.key?("email")
         end,
       ).to have_been_made.once
     end
