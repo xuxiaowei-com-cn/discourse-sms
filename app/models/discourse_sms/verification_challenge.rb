@@ -40,3 +40,22 @@ module ::DiscourseSms
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: discourse_sms_verification_challenges
+#
+#  id           :bigint           not null, primary key
+#  attempts     :integer          default(0), not null
+#  expires_at   :datetime         not null
+#  phone_number :string(20)       not null
+#  sent_at      :datetime         not null
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
+#  user_id      :integer          not null
+#
+# Indexes
+#
+#  index_discourse_sms_verification_challenges_on_expires_at  (expires_at)
+#  index_discourse_sms_verification_challenges_on_user_id     (user_id) UNIQUE
+#

@@ -36,3 +36,20 @@ module ::DiscourseSms
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: discourse_sms_phone_bindings
+#
+#  id           :bigint           not null, primary key
+#  phone_number :string(20)       not null
+#  verified_at  :datetime         not null
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
+#  user_id      :integer          not null
+#
+# Indexes
+#
+#  index_discourse_sms_phone_bindings_on_phone_number  (phone_number) UNIQUE
+#  index_discourse_sms_phone_bindings_on_user_id       (user_id) UNIQUE
+#

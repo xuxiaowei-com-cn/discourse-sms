@@ -33,3 +33,21 @@ module ::DiscourseSms
     end
   end
 end
+
+# == Schema Information
+#
+# Table name: discourse_sms_phone_histories
+#
+#  id           :bigint           not null, primary key
+#  event_type   :string(20)       not null
+#  phone_number :string(20)       not null
+#  created_at   :datetime         not null
+#  updated_at   :datetime         not null
+#  user_id      :integer          not null
+#
+# Indexes
+#
+#  index_discourse_sms_phone_histories_on_phone_number            (phone_number)
+#  index_discourse_sms_phone_histories_on_user_id                 (user_id)
+#  index_discourse_sms_phone_histories_on_user_id_and_created_at  (user_id,created_at)
+#
