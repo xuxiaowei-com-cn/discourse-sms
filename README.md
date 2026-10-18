@@ -21,6 +21,7 @@ one API to verify it.
 - Show a masked phone number after verification.
 - Configurable country code for members who type a number without `+`.
 - Captcha is required by default whenever a verification code is sent, and can be turned off by an administrator.
+- Optionally require phone binding before creating topics, replies, or private messages, with group and username exemptions.
 - Rate limits: resend cooldown, sends per account per hour, and sends per phone number per hour.
 - Verification challenges with a TTL and a limited number of attempts.
 - Provider authentication with a bearer token (or a custom header/scheme).
@@ -103,6 +104,9 @@ All settings are under **Admin → Settings → Plugins**.
 | --- | --- | --- |
 | `sms_enabled` | `false` | Turns the plugin on. |
 | `sms_require_captcha` | `true` | Requires a Captcha challenge before sending a code. Strongly recommended. |
+| `sms_require_phone_binding` | `false` | Requires a verified phone number before creating topics, replies, or private messages. |
+| `sms_skip_phone_binding_groups` | `1\|2` | Groups that can skip the binding requirement. Defaults to admins and moderators. |
+| `sms_skip_phone_binding_usernames` | empty | Individual usernames that can skip the binding requirement (comma or `\|` separated). |
 | `sms_send_api_url` | empty | Absolute URL of the send-code API. |
 | `sms_verify_api_url` | empty | Absolute URL of the verify-code API. |
 | `sms_auth_token` | empty | Token sent with every provider request. Stored as a secret. |
@@ -213,6 +217,24 @@ The browser renders the widget for hCaptcha/reCAPTCHA v2, or executes reCAPTCHA 
 with the provider before any SMS request is made. If the requirement is enabled but captcha is
 disabled, not configured, or the token is missing/invalid, the send request is rejected.
 
+## Forced phone binding
+
+Set `sms_require_phone_binding` to require a verified phone number before a member can:
+
+- create a topic
+- reply to a topic
+- send a private message
+
+Reading and other account features remain available. Verified members are never blocked.
+
+Members in `sms_skip_phone_binding_groups` (admins and moderators by default) or listed in
+`sms_skip_phone_binding_usernames` are exempt. System accounts, bots, and staged users are always
+exempt so automated mail and system messages keep working. Clear the group list if you want to
+enforce binding for staff too.
+
+When an unbound member is affected, a site-wide notice links them to **Preferences → Security** to
+bind a phone number.
+
 ## Member experience
 
 - **Preferences → Security** shows whether a phone number is linked.
@@ -236,6 +258,8 @@ disabled, not configured, or the token is missing/invalid, the send request is r
   `sms_max_sends_per_hour`.
 - **Captcha blocks sending** — keep `sms require captcha` enabled in production. It can be disabled
   temporarily for diagnostics, but rate limits remain the only abuse protection in that mode.
+- **Members cannot post after enabling enforcement** — add them to `sms skip phone binding groups`
+  or `sms skip phone binding usernames`, or make sure they have verified a phone number.
 
 ## Security notes
 
@@ -247,6 +271,7 @@ disabled, not configured, or the token is missing/invalid, the send request is r
 - Rate limits apply per account, per phone number, and as a resend cooldown.
 - Phone bindings are deleted when a user is destroyed or anonymized.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
+- When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or private messages.
 
 ## Development
 

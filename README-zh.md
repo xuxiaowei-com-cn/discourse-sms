@@ -19,6 +19,7 @@
 - 验证成功后展示脱敏手机号。
 - 可配置默认国家区号，会员输入不带 `+` 的号码时自动补全。
 - 默认每次发送验证码都必须通过人机验证（Captcha），管理员可关闭该要求。
+- 可选：要求会员在发帖、回复或发送私信前绑定手机号，并支持按用户组或用户名豁免。
 - 限流：重发冷却、每账号每小时发送上限、每手机号每小时发送上限。
 - 验证挑战具有有效期和最大尝试次数。
 - 支持 Bearer Token 或自定义请求头/前缀认证。
@@ -97,6 +98,9 @@ sv restart unicorn
 | --- | --- | --- |
 | `sms_enabled` | `false` | 是否启用插件。 |
 | `sms_require_captcha` | `true` | 发送验证码前是否要求人机验证（Captcha）。强烈建议保持开启。 |
+| `sms_require_phone_binding` | `false` | 是否要求验证手机号后才能发帖、回复或发送私信。 |
+| `sms_skip_phone_binding_groups` | `1\|2` | 可跳过绑定要求的用户组。默认管理员和版主。 |
+| `sms_skip_phone_binding_usernames` | 空 | 可跳过绑定要求的用户名，多个用逗号或 `\|` 分隔。 |
 | `sms_send_api_url` | 空 | 发送验证码 API 的完整 URL。 |
 | `sms_verify_api_url` | 空 | 校验验证码 API 的完整 URL。 |
 | `sms_auth_token` | 空 | 每次请求短信服务商时携带的 Token，作为密钥保存。 |
@@ -201,6 +205,22 @@ Content-Type: application/json
 并将 Token 作为 `captcha_token` 提交。该要求开启时，服务端在调用任何短信接口前向验证码服务商
 校验该 Token；验证码未启用、未配置，或 Token 缺失/无效时，发送请求会被拒绝。
 
+## 强制绑定手机号
+
+开启 `sms_require_phone_binding` 后，未验证手机号的会员不能：
+
+- 发布主题
+- 回复主题
+- 发送私信
+
+浏览和其他账号功能不受影响；已验证手机号的会员不会被拦截。
+
+`sms_skip_phone_binding_groups` 中的用户组（默认管理员和版主）以及
+`sms_skip_phone_binding_usernames` 中的用户名可跳过该要求。系统账号、机器人和暂存用户始终豁免，
+以免影响系统消息和邮件回复。如需对管理员也强制生效，清空用户组列表即可。
+
+被拦截的会员会在站点顶部看到提示，并可通过链接前往**偏好设置 → 安全性**绑定手机号。
+
 ## 会员体验
 
 - **偏好设置 → 安全性**中显示是否已绑定手机号。
@@ -222,6 +242,8 @@ Content-Type: application/json
   `sms_max_sends_per_hour`。
 - **人机验证阻止发送** — 生产环境请保持 `sms require captcha` 开启。可以临时关闭用于排查，但
   此模式下只剩限流作为防滥用手段。
+- **开启强制绑定后会员无法发帖** — 将其加入 `sms skip phone binding groups` 或
+  `sms skip phone binding usernames`，或确认其已完成手机号验证。
 
 ## 安全说明
 
@@ -233,6 +255,7 @@ Content-Type: application/json
 - 限流按账号、手机号和重发冷却生效。
 - 用户被删除或匿名化时会删除手机号绑定。
 - `sms_require_captcha` 开启时，人机验证未启用或未配置会拒绝发送。
+- `sms_require_phone_binding` 开启时，未绑定且不在豁免名单中的账号不能发帖、回复或发送私信。
 
 ## 开发
 

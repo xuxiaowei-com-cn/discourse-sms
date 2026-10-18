@@ -23,6 +23,10 @@ require_relative "lib/discourse_sms/engine"
 after_initialize do
   require_relative "app/models/discourse_sms/phone_binding"
   require_relative "app/models/discourse_sms/verification_challenge"
+  require_relative "lib/discourse_sms/phone_verification"
+  require_relative "lib/discourse_sms/guardian_extension"
+
+  reloadable_patch { Guardian.prepend(DiscourseSms::GuardianExtension) }
 
   add_to_serializer(
     :current_user,
@@ -35,6 +39,12 @@ after_initialize do
     :sms_phone_masked,
     include_condition: -> { SiteSetting.sms_enabled },
   ) { DiscourseSms::PhoneBinding.find_by(user_id: object.id)&.masked_phone }
+
+  add_to_serializer(
+    :current_user,
+    :sms_phone_binding_required,
+    include_condition: -> { SiteSetting.sms_enabled },
+  ) { DiscourseSms::PhoneVerification.required_for?(object) }
 
   add_to_serializer(
     :admin_detailed_user,

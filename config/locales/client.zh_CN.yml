@@ -1,6 +1,9 @@
 zh_CN:
   js:
     sms:
+      binding_required:
+        notice: "发帖、回复或发送私信前，请先绑定手机号。"
+        link: "前往绑定"
       title: "手机号"
       description: "将手机号绑定到账号，我们会通过短信发送验证码。"
       status:

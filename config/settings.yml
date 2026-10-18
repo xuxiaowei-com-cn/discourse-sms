@@ -5,6 +5,15 @@ plugins:
   sms_require_captcha:
     default: true
     client: true
+  sms_require_phone_binding:
+    default: false
+  sms_skip_phone_binding_groups:
+    type: group_list
+    list_type: compact
+    default: "1|2"
+    allow_any: false
+  sms_skip_phone_binding_usernames:
+    default: ""
   sms_send_api_url:
     default: ""
   sms_verify_api_url:
