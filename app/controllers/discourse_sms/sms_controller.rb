@@ -8,6 +8,7 @@ module ::DiscourseSms
 
     before_action :ensure_logged_in
     before_action :ensure_admin, only: :user_status
+    skip_before_action :ensure_logged_in, only: %i[registration_send_code registration_verify_code]
 
     def status
       render json: binding_json(PhoneBinding.for_user(current_user))
@@ -19,6 +20,89 @@ module ::DiscourseSms
 
       binding = PhoneBinding.for_user(user)
       render json: binding_json(binding).merge(username: user.username)
+    end
+
+    # Registration happens before a user exists, so this challenge is keyed by
+    # phone number and a one-time token is returned after verification.
+    def registration_send_code
+      return render_error(:registration_disabled) if !Registration.required?
+
+      phone = registration_phone
+      return render_error(:phone_invalid) if phone.nil?
+      return render_error(:phone_taken) if PhoneBinding.exists?(phone_number: phone)
+      return if !verify_captcha_or_render_error!
+
+      enforce_registration_send_rate_limits!(phone)
+
+      Registration.clear_session!(server_session)
+
+      ttl = SiteSetting.sms_code_ttl_minutes.to_i.minutes
+      challenge = RegistrationChallenge.issue!(phone_number: phone, ttl: ttl)
+
+      begin
+        ApiClient.new.send_code(phone: phone)
+      rescue ApiClient::RejectedError => e
+        challenge.destroy!
+        return render_error(:provider_rejected, message: e.message)
+      rescue ApiClient::UnavailableError
+        challenge.destroy!
+        return render_error(:provider_unavailable, status: 503)
+      rescue ApiClient::ConfigurationError
+        challenge.destroy!
+        return render_error(:provider_not_configured)
+      end
+
+      render json: {
+               success: true,
+               masked_phone: PhoneNumber.mask(phone),
+               expires_in: ttl.to_i,
+               resend_after: SiteSetting.sms_resend_interval_seconds.to_i,
+             }
+    end
+
+    def registration_verify_code
+      return render_error(:registration_disabled) if !Registration.required?
+
+      phone = registration_phone
+      return render_error(:phone_invalid) if phone.nil?
+
+      code = params[:sms_code].to_s.strip
+      return render_error(:code_invalid_format) if !code.match?(/\A[A-Za-z0-9]{4,20}\z/)
+      return render_error(:phone_taken) if PhoneBinding.exists?(phone_number: phone)
+
+      challenge = RegistrationChallenge.find_by(phone_number: phone)
+      return render_error(:code_not_requested) if challenge.nil?
+      return render_error(:code_expired) if challenge.expired?
+      return render_error(:too_many_attempts) if challenge.attempts_exhausted?
+
+      enforce_registration_verify_rate_limits!(phone)
+
+      challenge.with_lock do
+        return render_error(:code_expired) if challenge.expired?
+        return render_error(:too_many_attempts) if challenge.attempts_exhausted?
+
+        which = verify_with_provider(challenge.phone_number, code)
+        return which if performed?
+
+        if which == true
+          raw_token = challenge.mark_verified!
+          Registration.store_session!(
+            server_session,
+            phone: challenge.phone_number,
+            token: raw_token,
+          )
+          render json: {
+                   success: true,
+                   registration_token: raw_token,
+                   phone_number: challenge.phone_number,
+                   masked_phone: PhoneNumber.mask(challenge.phone_number),
+                   expires_in: (challenge.token_expires_at - Time.zone.now).to_i,
+                 }
+        else
+          challenge.increment!(:attempts)
+          render_error(:code_invalid)
+        end
+      end
     end
 
     def send_code
@@ -48,17 +132,7 @@ module ::DiscourseSms
         end
       end
 
-      if SiteSetting.sms_require_captcha
-        begin
-          Captcha.verify!(params[:captcha_token], remote_ip: request.remote_ip)
-        rescue Captcha::NotConfigured
-          return render_error(:captcha_not_configured)
-        rescue Captcha::VerificationFailed
-          return render_error(:captcha_failed)
-        rescue Captcha::Unavailable
-          return render_error(:captcha_unavailable)
-        end
-      end
+      return if !verify_captcha_or_render_error!
 
       unless verifying_current
         existing = PhoneBinding.find_by(phone_number: phone)
@@ -146,6 +220,52 @@ module ::DiscourseSms
     end
 
     private
+
+    def registration_phone
+      PhoneNumber.normalize(
+        params[:sms_phone],
+        default_country_code: SiteSetting.sms_default_country_code,
+      )
+    end
+
+    def verify_captcha_or_render_error!
+      return true if !SiteSetting.sms_require_captcha
+
+      Captcha.verify!(params[:captcha_token], remote_ip: request.remote_ip)
+      true
+    rescue Captcha::NotConfigured
+      render_error(:captcha_not_configured)
+      false
+    rescue Captcha::VerificationFailed
+      render_error(:captcha_failed)
+      false
+    rescue Captcha::Unavailable
+      render_error(:captcha_unavailable)
+      false
+    end
+
+    def enforce_registration_send_rate_limits!(phone)
+      phone_key = Digest::SHA256.hexdigest(phone)
+      ip_key = Digest::SHA256.hexdigest(request.remote_ip.to_s)
+      interval = SiteSetting.sms_resend_interval_seconds.to_i
+
+      if interval.positive?
+        RateLimiter.new(nil, "sms-register-send-cooldown-#{phone_key}", 1, interval).performed!
+      end
+
+      max = SiteSetting.sms_max_sends_per_hour.to_i
+      if max.positive?
+        RateLimiter.new(nil, "sms-register-send-ip-#{ip_key}", max, 1.hour).performed!
+        RateLimiter.new(nil, "sms-register-send-phone-#{phone_key}", max, 1.hour).performed!
+      end
+    end
+
+    def enforce_registration_verify_rate_limits!(phone)
+      phone_key = Digest::SHA256.hexdigest(phone)
+      ip_key = Digest::SHA256.hexdigest(request.remote_ip.to_s)
+      RateLimiter.new(nil, "sms-register-verify-ip-#{ip_key}", 60, 1.hour).performed!
+      RateLimiter.new(nil, "sms-register-verify-phone-#{phone_key}", 60, 1.hour).performed!
+    end
 
     def verify_with_provider(phone, code)
       ApiClient.new.verify_code(phone: phone, code: code)

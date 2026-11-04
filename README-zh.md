@@ -20,6 +20,8 @@
 - 可配置默认国家区号，会员输入不带 `+` 的号码时自动补全。
 - 默认每次发送验证码都必须通过人机验证（Captcha），管理员可关闭该要求。
 - 可选：要求会员在发帖、回复或发送私信前绑定手机号，并支持按用户组或用户名豁免。
+- 可选：强制未绑定手机号的会员跳转到**偏好设置 → 安全性**完成绑定。
+- 可选：要求本地注册时填写并验证手机号，未验证手机号不允许注册。
 - 限流：重发冷却、每账号每小时发送上限、每手机号每小时发送上限。
 - 验证挑战具有有效期和最大尝试次数。
 - 支持 Bearer Token 或自定义请求头/前缀认证。
@@ -48,6 +50,23 @@
 
 当前绑定状态可通过 `GET /sms/status`（需登录）获取，同时也会以
 `sms_phone_verified` / `sms_phone_masked` 字段出现在 `current_user` 序列化结果中。
+
+### 注册手机号验证
+
+开启 `sms_require_phone_on_signup` 后，注册表单会在创建账号前要求验证手机号：
+
+1. 浏览器调用 `POST /sms/registration/send_code`，提交手机号；需要时同时提交 Captcha Token。
+   这两个接口不要求登录。
+2. 服务端校验 Captcha，按 IP 和手机号限流，调用外部**发送** API，并按手机号保存验证挑战。
+3. 浏览器调用 `POST /sms/registration/verify_code`。校验成功后返回一次性
+   `registration_token` 和规范化后的 `phone_number`。
+4. 注册请求携带 `sms_phone` 和 `sms_registration_token`。`UsersController#create` 在创建账号前
+   校验 Token；缺失、过期或已使用的 Token 会被拒绝。
+5. 账号创建成功后，自动写入手机号绑定以及 `bind`/`verify` 历史记录。
+
+Token 在 `sms_registration_token_ttl_minutes` 分钟内有效，且只能使用一次。密码注册和邮箱验证码注册
+流程都支持；邮箱验证码流程会把 Token 保存在服务端会话中，最终创建账号的请求无需重复提交。
+注册手机号验证仅适用于本地注册；第三方登录创建账号的流程不同。
 
 ## 安装
 
@@ -90,6 +109,10 @@ sv restart unicorn
 
 构建完成后刷新浏览器。升级基础镜像或修改插件前端代码后需要重新执行。
 
+本仓库的 Docker Compose 启动命令会在缺少 Node.js 时从阿里云镜像安装 Node.js 22.23 和 pnpm
+10.28，每次容器重建后执行一次 `pnpm install --frozen-lockfile`，再构建插件资源并启动
+`/sbin/boot`。
+
 ## 配置项
 
 所有设置位于**管理 → 设置 → 插件**。
@@ -99,6 +122,9 @@ sv restart unicorn
 | `sms_enabled` | `false` | 是否启用插件。 |
 | `sms_require_captcha` | `true` | 发送验证码前是否要求人机验证（Captcha）。强烈建议保持开启。 |
 | `sms_require_phone_binding` | `false` | 是否要求验证手机号后才能发帖、回复或发送私信。 |
+| `sms_force_phone_binding_redirect` | `false` | 强制未绑定手机号的会员跳转到**偏好设置 → 安全性**；开启后也会同时要求绑定手机号。 |
+| `sms_require_phone_on_signup` | `false` | 本地注册时是否必须验证手机号，未验证不允许创建账号。 |
+| `sms_registration_token_ttl_minutes` | `30` | 手机号验证通过后，一次性注册 Token 的有效期（分钟）。 |
 | `sms_skip_phone_binding_groups` | `1\|2` | 可跳过绑定要求的用户组。默认管理员和版主。 |
 | `sms_skip_phone_binding_usernames` | 空 | 可跳过绑定要求的用户名，多个用逗号或 `\|` 分隔。 |
 | `sms_send_api_url` | 空 | 发送验证码 API 的完整 URL。 |
@@ -148,6 +174,8 @@ Content-Type: application/json
 
 发送请求还会携带会员 ID 和邮箱，便于服务商识别账号。可通过 `sms_user_id_param` 和
 `sms_email_param` 修改字段名或留空以停止发送。校验请求只包含手机号和验证码。
+
+注册阶段账号尚不存在，因此注册发送请求只包含手机号和 `purpose`，不会发送 `user_id` 和 `email`。
 
 验证码由服务商生成并通过短信发送。由于 Discourse 不保存验证码，必须由同一服务商负责校验。
 
@@ -225,9 +253,10 @@ Content-Type: application/json
 
 ## 数据库表
 
-插件会创建三张表。迁移文件位于
-`db/migrate/20261018000000_create_discourse_sms_tables.rb` 和
-`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`。
+插件会创建四张表。迁移文件位于
+`db/migrate/20261018000000_create_discourse_sms_tables.rb`、
+`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb` 和
+`db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb`。
 
 ### `discourse_sms_phone_bindings`
 
@@ -255,6 +284,23 @@ Content-Type: application/json
 | `attempts` | integer | 验证失败次数，默认 `0`。 |
 | `created_at` / `updated_at` | datetime | Rails 时间戳。 |
 
+### `discourse_sms_registration_challenges`
+
+本地注册阶段每个手机号一条验证挑战。此时账号尚不存在，因此使用手机号而不是 `user_id` 作为键。
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | integer | 主键。 |
+| `phone_number` | string(20) | E.164 手机号。唯一索引；每个号码一条有效注册挑战。 |
+| `sent_at` | datetime | 发送验证码的时间。 |
+| `expires_at` | datetime | 挑战过期时间。有索引。 |
+| `attempts` | integer | 验证失败次数，默认 `0`。 |
+| `verified_at` | datetime | 服务商确认验证码正确的时间。 |
+| `token_digest` | string(64) | 一次性注册 Token 的 SHA-256 摘要。唯一索引；不保存原始 Token。 |
+| `token_expires_at` | datetime | 注册 Token 过期时间。 |
+| `consumed_at` | datetime | Token 用于创建账号的时间；已消费的 Token 不能重复使用。 |
+| `created_at` / `updated_at` | datetime | Rails 时间戳。 |
+
 ### `discourse_sms_phone_histories`
 
 手机号事件的只追加审计历史。
@@ -272,8 +318,8 @@ Content-Type: application/json
 手机号相关的重要操作会写入 `discourse_sms_phone_histories`。
 
 首次绑定、更换手机号、以及短信验证码验证成功（包括更换手机号前的当前手机号验证）都会写入历史。
-更换手机号时会为旧号码记录 `unbind`，为新号码记录 `bind` 和 `verify`。用户被删除或匿名化时，
-历史记录会与绑定数据一起删除。
+更换手机号时会为旧号码记录 `unbind`，为新号码记录 `bind` 和 `verify`。注册时验证手机号并通过
+注册创建账号后，会记录 `bind` 和 `verify`。用户被删除或匿名化时，历史记录会与绑定数据一起删除。
 
 历史记录目前用于审计，可通过数据库或 Rails 控制台查询，暂未增加会员界面。
 
@@ -293,6 +339,11 @@ Content-Type: application/json
 
 被拦截的会员会在站点顶部看到提示，并可通过链接前往**偏好设置 → 安全性**绑定手机号。
 
+开启 `sms_force_phone_binding_redirect` 后，未绑定的会员访问其他页面时会被跳转到
+`/my/preferences/security`。该跳转使用相同的豁免规则，并在登录、注册、账号激活、密码重置、管理、
+审核和向导页面跳过，以便会员恢复账号或管理员关闭设置。开启该跳转也会同时要求绑定手机号；关闭后，
+若 `sms_require_phone_binding` 仍开启，则恢复为仅拦截发帖等操作。
+
 ## 会员体验
 
 - **偏好设置 → 安全性**中显示是否已绑定手机号。管理区块仅在会员本人的偏好设置页面显示；
@@ -300,6 +351,8 @@ Content-Type: application/json
 - 验证成功后显示脱敏手机号。
 - 管理员打开其他会员的**偏好设置 → 安全性**页面时，只能只读查看对方脱敏后的手机号。
 - **更换手机号**使用相同的发送/校验流程；在新手机号验证成功前，旧绑定保持有效。
+- 开启 `sms_require_phone_on_signup` 后，注册表单会显示手机号验证区块；未完成验证无法创建账号，
+  验证通过的手机会自动成为新账号的绑定。
 - 更换已绑定手机号时，必须先输入当前绑定的手机号；输入不一致会直接报错，一致时才向该号码发送验证码。验证通过后再向新手机号发送第二个验证码；`sms_require_captcha` 开启时两次发送都需要人机验证。
 
 ## 常见问题
@@ -318,12 +371,18 @@ Content-Type: application/json
   此模式下只剩限流作为防滥用手段。
 - **开启强制绑定后会员无法发帖** — 将其加入 `sms skip phone binding groups` 或
   `sms skip phone binding usernames`，或确认其已完成手机号验证。
+- **注册时提示必须先验证手机号** — 注册 Token 缺失、过期、已被使用，或与手机号不匹配。请重新验证
+  手机号，并在 `sms_registration_token_ttl_minutes` 内完成注册。
+- **未绑定会员被反复跳转** — 确认 `/my/preferences/security` 可以打开且手机号表单正常显示；绑定成功后
+  `sms_phone_binding_required` 变为 `false`，跳转即停止。
+- **管理员被跳离管理后台** — 管理、审核和向导路由已跳过；也可以直接在**管理 → 设置 → 插件**中关闭该设置。
 
 ## 安全说明
 
 - 外部 API Token 是 Discourse 密钥设置，不会下发到浏览器。
-- 发送请求会携带会员 ID 和邮箱；如服务商不应接收，可将对应字段名留空。
+- 发送请求会携带会员 ID 和邮箱；如服务商不应接收，可将对应字段名留空。注册阶段账号尚不存在，不发送这两个字段。
 - 验证码不会保存到数据库。
+- 注册 Token 只以 SHA-256 摘要保存，超过 `sms_registration_token_ttl_minutes` 后失效，创建账号后即被消费。
 - 一个手机号只能属于一个账号（数据库唯一索引）。
 - 每个账号同时只有一个有效挑战；再次发送会替换旧挑战。
 - 挑战会过期，并受 `sms_max_verification_attempts` 限制。
@@ -332,6 +391,8 @@ Content-Type: application/json
 - 使用只追加的手机号历史表记录绑定、解绑和验证事件。
 - `sms_require_captcha` 开启时，人机验证未启用或未配置会拒绝发送。
 - `sms_require_phone_binding` 开启时，未绑定且不在豁免名单中的账号不能发帖、回复或发送私信。
+- `sms_require_phone_on_signup` 开启时，`UsersController#create` 和邮箱验证码注册路径 `SessionController#verify_login_code` 都会拒绝没有有效一次性注册 Token 的请求；Token 与已验证手机号绑定、会过期且只能使用一次。
+- `sms_force_phone_binding_redirect` 开启时，未绑定且不在豁免名单中的会员会被保持在**偏好设置 → 安全性**；登录、注册、激活、密码重置、管理、审核和向导页面仍可访问。
 - 更换已绑定手机号必须先输入并验证旧手机号；输入不一致会报错。授权与当前会话绑定并会过期。
 - 管理员也只能看到脱敏手机号；管理员专用状态接口不会返回完整号码。
 - 手机号历史包含手机号，用户被删除或匿名化时会一并删除。

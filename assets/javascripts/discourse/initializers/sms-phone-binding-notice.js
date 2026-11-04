@@ -19,9 +19,7 @@ export default {
           return;
         }
 
-        const url = getURL(
-          `/u/${encodeURIComponent(currentUser.username)}/preferences/security`
-        );
+        const url = getURL("/my/preferences/security");
 
         api.addGlobalNotice(
           i18n("sms.binding_required.notice"),

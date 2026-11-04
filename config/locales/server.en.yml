@@ -19,11 +19,16 @@ en:
       provider_unavailable: "The SMS provider is currently unavailable. Please try again later."
       provider_rejected: "The SMS provider rejected the request: %{message}"
       provider_rejected_generic: "The SMS provider rejected the request."
+      registration_disabled: "Phone verification during registration is not enabled on this site."
+      registration_phone_required: "Verify your phone number before creating an account."
 
   site_settings:
     sms_enabled: "Enable phone number verification through an external SMS provider."
     sms_require_captcha: "Require a Captcha challenge before an SMS verification code is sent. It is strongly recommended to keep this enabled. Requires the discourse-captcha plugin to be enabled and configured."
     sms_require_phone_binding: "Require members to bind a verified phone number before creating topics, replies, or personal messages. Reading remains available."
+    sms_force_phone_binding_redirect: "Force members without a verified phone number to the Preferences → Security page to bind one. Enabling this also requires phone binding; administrators can turn it off in the admin panel."
+    sms_require_phone_on_signup: "Require new members to enter and verify a phone number during local registration. Registration is refused until the phone number is verified."
+    sms_registration_token_ttl_minutes: "How long the one-time registration token remains valid after the phone number is verified. The member must finish registration within this window."
     sms_skip_phone_binding_groups: "Groups whose members can skip the phone binding requirement."
     sms_skip_phone_binding_usernames: "Usernames that can skip the phone binding requirement. Separate multiple usernames with commas or <code>|</code>."
     sms_send_api_url: "URL of the external API that sends an SMS verification code. The request body contains the phone number."

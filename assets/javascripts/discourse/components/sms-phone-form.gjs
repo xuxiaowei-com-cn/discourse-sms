@@ -353,12 +353,23 @@ export default class SmsPhoneForm extends Component {
       this.code = "";
       this.phone = "";
       this.success = i18n("sms.success.verified");
+      this.#syncCurrentUser(result);
       this.#resetCaptchaWidget();
     } catch (error) {
       this.error = extractError(error, i18n("sms.errors.generic"));
     } finally {
       this.verifying = false;
     }
+  }
+
+  #syncCurrentUser(binding) {
+    if (!this.canManage) {
+      return;
+    }
+
+    this.currentUser.set("sms_phone_verified", Boolean(binding.bound));
+    this.currentUser.set("sms_phone_masked", binding.masked_phone);
+    this.currentUser.set("sms_phone_binding_required", false);
   }
 
   #errorMessage(error) {

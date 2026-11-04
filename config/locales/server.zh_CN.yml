@@ -19,11 +19,16 @@ zh_CN:
       provider_unavailable: "短信服务暂时不可用，请稍后重试。"
       provider_rejected: "短信服务拒绝了请求：%{message}"
       provider_rejected_generic: "短信服务拒绝了请求。"
+      registration_disabled: "站点未启用注册手机号验证。"
+      registration_phone_required: "注册前请先完成手机号验证。"
 
   site_settings:
     sms_enabled: "启用通过外部短信服务验证手机号。"
     sms_require_captcha: "发送短信验证码前要求完成人机验证（Captcha）。强烈建议保持开启。需要启用并配置 discourse-captcha 插件。"
     sms_require_phone_binding: "要求会员在发帖、回复或发送私信前绑定并验证手机号。浏览站点不受影响。"
+    sms_force_phone_binding_redirect: "强制未绑定手机号的会员跳转到“偏好设置 → 安全”页面完成绑定。启用后也会同时要求绑定手机号；管理员可在后台关闭此设置。"
+    sms_require_phone_on_signup: "要求新会员在注册时填写并验证手机号，未验证手机号将无法完成本地注册。"
+    sms_registration_token_ttl_minutes: "注册手机号验证通过后，注册令牌的有效期（分钟）。会员需要在此时间内完成注册。"
     sms_skip_phone_binding_groups: "这些用户组的成员可以跳过手机号绑定要求。"
     sms_skip_phone_binding_usernames: "可以跳过手机号绑定要求的用户名。多个用户名用逗号或 <code>|</code> 分隔。"
     sms_send_api_url: "发送短信验证码的外部 API 地址。请求体中包含手机号。"

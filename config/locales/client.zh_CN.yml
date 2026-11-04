@@ -6,6 +6,11 @@ zh_CN:
         link: "前往绑定"
       title: "手机号"
       description: "将手机号绑定到账号，我们会通过短信发送验证码。"
+      signup:
+        title: "手机号验证"
+        description: "注册前需要填写并验证手机号，验证码将通过短信发送。"
+        verified: "手机号已验证，可以继续完成注册。"
+        verification_required: "请先完成手机号验证再注册。"
       status:
         verified: "已验证"
         unverified: "未验证"

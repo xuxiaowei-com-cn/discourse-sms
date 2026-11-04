@@ -23,8 +23,16 @@ RSpec.describe DiscourseSms::PhoneVerification do
 
   it "does not require binding when the requirement is disabled" do
     SiteSetting.sms_require_phone_binding = false
+    SiteSetting.sms_force_phone_binding_redirect = false
 
     expect(described_class.required_for?(user)).to eq(false)
+  end
+
+  it "requires binding when only the redirect enforcement is enabled" do
+    SiteSetting.sms_require_phone_binding = false
+    SiteSetting.sms_force_phone_binding_redirect = true
+
+    expect(described_class.required_for?(user)).to eq(true)
   end
 
   it "requires binding for an unbound member" do

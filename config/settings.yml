@@ -7,6 +7,16 @@ plugins:
     client: true
   sms_require_phone_binding:
     default: false
+  sms_force_phone_binding_redirect:
+    default: false
+    client: true
+  sms_require_phone_on_signup:
+    default: false
+    client: true
+  sms_registration_token_ttl_minutes:
+    default: 30
+    min: 5
+    max: 120
   sms_skip_phone_binding_groups:
     type: group_list
     list_type: compact

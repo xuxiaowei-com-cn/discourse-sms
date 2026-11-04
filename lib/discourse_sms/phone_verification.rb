@@ -9,7 +9,10 @@ module ::DiscourseSms
 
     def required_for?(user)
       return false if user.nil?
-      return false if !SiteSetting.sms_enabled || !SiteSetting.sms_require_phone_binding
+      return false if !SiteSetting.sms_enabled
+      if !SiteSetting.sms_require_phone_binding && !SiteSetting.sms_force_phone_binding_redirect
+        return false
+      end
       return false if exempt?(user)
 
       !PhoneBinding.verified?(user)

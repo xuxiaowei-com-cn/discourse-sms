@@ -22,6 +22,8 @@ one API to verify it.
 - Configurable country code for members who type a number without `+`.
 - Captcha is required by default whenever a verification code is sent, and can be turned off by an administrator.
 - Optionally require phone binding before creating topics, replies, or personal messages, with group and username exemptions.
+- Optionally force unbound members to **Preferences → Security** until they bind a phone number.
+- Optionally require phone verification during local registration; registration is refused without a verified phone number.
 - Rate limits: resend cooldown, sends per account per hour, and sends per phone number per hour.
 - Verification challenges with a TTL and a limited number of attempts.
 - Provider authentication with a bearer token (or a custom header/scheme).
@@ -54,6 +56,27 @@ one API to verify it.
 
 The current binding is available at `GET /sms/status` (authenticated) and is also exposed as
 `sms_phone_verified` / `sms_phone_masked` on the `current_user` serializer.
+
+### Registration verification
+
+When `sms_require_phone_on_signup` is on, the signup form asks for a phone number before the account
+is created:
+
+1. The browser calls `POST /sms/registration/send_code` with the phone number and, when required, a
+   captcha token. These endpoints do not require a logged-in user.
+2. The server verifies the captcha, applies IP/phone rate limits, calls the external **send** API,
+   and stores a challenge keyed by phone number.
+3. The browser calls `POST /sms/registration/verify_code`. On success the server returns a one-time
+   `registration_token` and the normalized `phone_number`.
+4. The signup request carries `sms_phone` and `sms_registration_token`. `UsersController#create`
+   validates the token before creating the account; a missing, expired, or reused token is refused.
+5. After the account is created, the binding and the `bind`/`verify` history rows are written.
+
+The token is valid for `sms_registration_token_ttl_minutes` and can be used only once. Both the
+password signup form and the email-code signup flow are supported. In the email-code flow the token
+is kept in the server session, so the final account-creation request does not need to resend it.
+Registration phone verification applies to local signups; external login providers create accounts
+through a different flow.
 
 ## Installation
 
@@ -97,6 +120,10 @@ sv restart unicorn
 Refresh the browser afterwards. Re-run the build after upgrading the base image or changing the
 plugin's frontend code.
 
+The repository's Docker Compose command installs Node.js 22.23 from the Aliyun mirror and pnpm
+10.28 when they are missing, runs `pnpm install --frozen-lockfile` once per container, and then
+builds the plugin assets before `/sbin/boot`.
+
 ## Configuration
 
 All settings are under **Admin → Settings → Plugins**.
@@ -106,6 +133,9 @@ All settings are under **Admin → Settings → Plugins**.
 | `sms_enabled` | `false` | Turns the plugin on. |
 | `sms_require_captcha` | `true` | Requires a Captcha challenge before sending a code. Strongly recommended. |
 | `sms_require_phone_binding` | `false` | Requires a verified phone number before creating topics, replies, or personal messages. |
+| `sms_force_phone_binding_redirect` | `false` | Forces unbound members to **Preferences → Security**. Enabling it also makes phone binding required. |
+| `sms_require_phone_on_signup` | `false` | Requires local registrations to verify a phone number before the account is created. |
+| `sms_registration_token_ttl_minutes` | `30` | How long the one-time registration token remains valid after phone verification. |
 | `sms_skip_phone_binding_groups` | `1\|2` | Groups that can skip the binding requirement. Defaults to admins and moderators. |
 | `sms_skip_phone_binding_usernames` | empty | Individual usernames that can skip the binding requirement (comma or `\|` separated). |
 | `sms_send_api_url` | empty | Absolute URL of the send-code API. |
@@ -156,6 +186,9 @@ Content-Type: application/json
 The send request also carries the member's ID and email so the provider can identify the account.
 Use `sms_user_id_param` and `sms_email_param` to rename or omit those fields. The verify request only
 contains the phone number and code.
+
+During registration no account exists yet, so the registration send request contains only the phone
+number and `purpose`; the `user_id` and `email` fields are omitted.
 
 The provider generates the code and delivers it by SMS. Because Discourse does not store the code,
 the same provider must be able to verify it.
@@ -242,9 +275,10 @@ until the new number is verified.
 
 ## Database schema
 
-The plugin adds three tables. Migrations are in
-`db/migrate/20261018000000_create_discourse_sms_tables.rb` and
-`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`.
+The plugin adds four tables. Migrations are in
+`db/migrate/20261018000000_create_discourse_sms_tables.rb`,
+`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`, and
+`db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb`.
 
 ### `discourse_sms_phone_bindings`
 
@@ -272,6 +306,24 @@ One active challenge per member, replaced when a new code is requested.
 | `attempts` | integer | Failed verification attempts, default `0`. |
 | `created_at` / `updated_at` | datetime | Rails timestamps. |
 
+### `discourse_sms_registration_challenges`
+
+One challenge per phone number during local registration. This table exists before an account does,
+so it is keyed by phone number rather than by `user_id`.
+
+| Column | Type | Notes |
+| --- | --- | --- |
+| `id` | integer | Primary key. |
+| `phone_number` | string(20) | E.164 number. Unique index; one active registration challenge per number. |
+| `sent_at` | datetime | When the code was requested. |
+| `expires_at` | datetime | Challenge expiry. Indexed. |
+| `attempts` | integer | Failed verification attempts, default `0`. |
+| `verified_at` | datetime | When the provider accepted the code. |
+| `token_digest` | string(64) | SHA-256 digest of the one-time registration token. Unique index. The raw token is never stored. |
+| `token_expires_at` | datetime | Expiry of the registration token. |
+| `consumed_at` | datetime | When the token was used to create an account. A consumed token cannot be reused. |
+| `created_at` / `updated_at` | datetime | Rails timestamps. |
+
 ### `discourse_sms_phone_histories`
 
 Append-only audit history for phone events.
@@ -290,8 +342,9 @@ Every important phone-number action is written to `discourse_sms_phone_histories
 
 Events are recorded when a phone is first bound, when an old number is replaced, and when an SMS code
 is successfully verified (including the current-phone check before a change). Replacing a number
-produces `unbind` for the old number and `bind`/`verify` for the new number. History rows are deleted
-together with the binding when a user is destroyed or anonymized.
+produces `unbind` for the old number and `bind`/`verify` for the new number. A registration that
+verified a phone number before signup produces `bind` and `verify` rows once the account is created.
+History rows are deleted together with the binding when a user is destroyed or anonymized.
 
 History is currently stored for auditing and can be queried from the database or Rails console; it
 does not add a member-facing UI.
@@ -314,6 +367,13 @@ enforce binding for staff too.
 When an unbound member is affected, a site-wide notice links them to **Preferences → Security** to
 bind a phone number.
 
+Set `sms_force_phone_binding_redirect` to also redirect unbound members to
+`/my/preferences/security` whenever they try to open another page. The redirect uses the same
+exemption rules and is skipped on login, signup, account activation, password reset, admin, review,
+and wizard pages so the account can still be recovered and the setting can be turned off. Enabling
+the redirect also makes phone binding required; turning it off restores normal blocking behavior
+when `sms_require_phone_binding` is still on.
+
 ## Member experience
 
 - **Preferences → Security** shows whether a phone number is linked. The management section is
@@ -324,6 +384,9 @@ bind a phone number.
   masked bound phone number in a read-only view.
 - **Change phone number** starts the same send/verify flow; the old binding stays active until the
   new number is verified.
+- When `sms_require_phone_on_signup` is on, the signup form includes a phone verification section.
+  The account cannot be created until the phone number is verified; the verified number becomes the
+  new account's binding automatically.
 - Changing a bound phone number first requires entering the currently bound number; a mismatch is rejected, and a match sends a code to that number. A second code is then sent to the new number. Captcha is used for both sends when `sms_require_captcha` is on.
 
 ## Troubleshooting
@@ -343,12 +406,20 @@ bind a phone number.
   temporarily for diagnostics, but rate limits remain the only abuse protection in that mode.
 - **Members cannot post after enabling enforcement** — add them to `sms skip phone binding groups`
   or `sms skip phone binding usernames`, or make sure they have verified a phone number.
+- **Signup says the phone must be verified** — the registration token is missing, expired, already
+  used, or was issued for a different number. Verify the phone again and finish signup within
+  `sms_registration_token_ttl_minutes`.
+- **An unbound member is redirected in a loop** — check that `/my/preferences/security` opens and the
+  phone form is visible; the redirect stops as soon as `sms_phone_binding_required` becomes false.
+- **Administrators are redirected away from the admin panel** — admin, review, and wizard routes are
+  skipped, but the setting itself can also be disabled from **Admin → Settings → Plugins**.
 
 ## Security notes
 
 - The external API token is a Discourse secret setting and is never sent to the browser.
-- The send request includes the member ID and email; configure blank field names if the provider must not receive them.
+- The send request includes the member ID and email; configure blank field names if the provider must not receive them. Registration sends omit both because no account exists yet.
 - Verification codes are never stored in the database.
+- Registration tokens are stored only as SHA-256 digests, expire after `sms_registration_token_ttl_minutes`, and are consumed when the account is created.
 - A phone number can belong to only one account (database unique indexes).
 - Only one active challenge exists per account; a new send replaces the previous challenge.
 - Challenges expire and are limited by `sms_max_verification_attempts`.
@@ -356,6 +427,8 @@ bind a phone number.
 - Phone bindings are deleted when a user is destroyed or anonymized.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
 - When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or personal messages.
+- When `sms_require_phone_on_signup` is on, `UsersController#create` and the email-code signup path in `SessionController#verify_login_code` reject requests without a valid one-time registration token. The token is bound to the verified phone number, expires, and is single-use.
+- When `sms_force_phone_binding_redirect` is on, unbound non-exempt members are kept on **Preferences → Security**; login, signup, activation, password reset, admin, review, and wizard routes remain reachable.
 - Replacing a bound phone number requires entering and verifying the old number first; a mismatch is rejected. The authorization is session-scoped and expires.
 - Administrators can only see a masked phone number; the admin-only status endpoint never returns the full number.
 
