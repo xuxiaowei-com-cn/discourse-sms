@@ -30,6 +30,7 @@ export default class SmsPhoneForm extends Component {
   @tracked sending = false;
   @tracked verifying = false;
   @tracked error = null;
+  @tracked codeError = null;
   @tracked success = null;
   @tracked resendRemaining = 0;
   @tracked captchaToken = null;
@@ -204,6 +205,7 @@ export default class SmsPhoneForm extends Component {
     this.code = "";
     this.codeSent = false;
     this.error = null;
+    this.codeError = null;
     this.success = null;
     this.captchaToken = null;
     this.captchaLoadFailed = false;
@@ -226,6 +228,7 @@ export default class SmsPhoneForm extends Component {
     this.code = "";
     this.codeSent = false;
     this.error = null;
+    this.codeError = null;
     this.success = null;
     this.#resetCaptchaWidget();
   }
@@ -234,12 +237,13 @@ export default class SmsPhoneForm extends Component {
   onPhoneInput(event) {
     this.phone = event.target.value;
     this.error = null;
+    this.codeError = null;
   }
 
   @action
   onCodeInput(event) {
     this.code = event.target.value;
-    this.error = null;
+    this.codeError = null;
   }
 
   @action
@@ -262,6 +266,7 @@ export default class SmsPhoneForm extends Component {
 
     this.sending = true;
     this.error = null;
+    this.codeError = null;
     this.success = null;
 
     try {
@@ -296,6 +301,7 @@ export default class SmsPhoneForm extends Component {
       });
 
       this.codeSent = true;
+      this.codeError = null;
       this.success = this.verifyingCurrent
         ? i18n("sms.change_phone.current_code_sent")
         : i18n("sms.success.code_sent");
@@ -318,12 +324,13 @@ export default class SmsPhoneForm extends Component {
     }
 
     if (!this.code.trim()) {
-      this.error = i18n("sms.errors.code_required");
+      this.codeError = i18n("sms.errors.code_required");
       return;
     }
 
     this.verifying = true;
     this.error = null;
+    this.codeError = null;
     this.success = null;
 
     try {
@@ -342,6 +349,7 @@ export default class SmsPhoneForm extends Component {
         this.codeSent = false;
         this.code = "";
         this.phone = "";
+        this.codeError = null;
         this.success = i18n("sms.change_phone.current_verified");
         this.#resetCaptchaWidget();
         return;
@@ -352,11 +360,12 @@ export default class SmsPhoneForm extends Component {
       this.codeSent = false;
       this.code = "";
       this.phone = "";
+      this.codeError = null;
       this.success = i18n("sms.success.verified");
       this.#syncCurrentUser(result);
       this.#resetCaptchaWidget();
     } catch (error) {
-      this.error = extractError(error, i18n("sms.errors.generic"));
+      this.codeError = extractError(error, i18n("sms.errors.generic"));
     } finally {
       this.verifying = false;
     }
@@ -728,6 +737,15 @@ export default class SmsPhoneForm extends Component {
                           {{i18n "sms.verify"}}
                         {{/if}}
                       </button>
+
+                      {{#if this.codeError}}
+                        <div
+                          class="alert alert-error sms-code-error"
+                          role="alert"
+                        >
+                          {{this.codeError}}
+                        </div>
+                      {{/if}}
                     </div>
                   {{/if}}
                 </div>
