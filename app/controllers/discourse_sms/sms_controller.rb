@@ -29,7 +29,6 @@ module ::DiscourseSms
 
       phone = registration_phone
       return render_error(:phone_invalid) if phone.nil?
-      return render_error(:phone_taken) if PhoneBinding.exists?(phone_number: phone)
       return if !verify_captcha_or_render_error!
 
       enforce_registration_send_rate_limits!(phone)
@@ -68,7 +67,6 @@ module ::DiscourseSms
 
       code = params[:sms_code].to_s.strip
       return render_error(:code_invalid_format) if !code.match?(/\A[A-Za-z0-9]{4,20}\z/)
-      return render_error(:phone_taken) if PhoneBinding.exists?(phone_number: phone)
 
       challenge = RegistrationChallenge.find_by(phone_number: phone)
       return render_error(:code_not_requested) if challenge.nil?
@@ -85,6 +83,13 @@ module ::DiscourseSms
         return which if performed?
 
         if which == true
+          # Do not reveal whether a phone is already bound until the caller has
+          # proven control of it with a valid SMS code.
+          if PhoneBinding.exists?(phone_number: challenge.phone_number)
+            challenge.destroy!
+            return render_error(:phone_taken)
+          end
+
           raw_token = challenge.mark_verified!
           Registration.store_session!(
             server_session,

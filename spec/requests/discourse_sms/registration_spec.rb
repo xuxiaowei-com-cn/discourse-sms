@@ -59,6 +59,36 @@ RSpec.describe "discourse-sms registration verification" do
       expect(a_request(:post, send_url)).to have_been_made.once
     end
 
+    it "does not reveal a bound phone when sending a code" do
+      DiscourseSms::PhoneBinding.create!(
+        user: Fabricate(:user),
+        phone_number: phone,
+        verified_at: Time.zone.now,
+      )
+
+      request_code
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["success"]).to eq(true)
+      expect(a_request(:post, send_url)).to have_been_made.once
+    end
+
+    it "rejects a bound phone only after the code is verified" do
+      DiscourseSms::PhoneBinding.create!(
+        user: Fabricate(:user),
+        phone_number: phone,
+        verified_at: Time.zone.now,
+      )
+
+      request_code
+      verify_code
+
+      expect(response.status).to eq(422)
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.phone_taken"))
+      expect(response.parsed_body).not_to have_key("registration_token")
+      expect(DiscourseSms::RegistrationChallenge.find_by(phone_number: phone)).to be_nil
+    end
+
     it "verifies the code and returns a one-time token" do
       request_code
       verify_code

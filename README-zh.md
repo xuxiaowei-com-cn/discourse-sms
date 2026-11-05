@@ -59,8 +59,10 @@
 1. 浏览器调用 `POST /sms/registration/send_code`，提交手机号；需要时同时提交 Captcha Token。
    这两个接口不要求登录。
 2. 服务端校验 Captcha，按 IP 和手机号限流，调用外部**发送** API，并按手机号保存验证挑战。
-3. 浏览器调用 `POST /sms/registration/verify_code`。校验成功后返回一次性
-   `registration_token` 和规范化后的 `phone_number`。
+   发送阶段**不会**检查手机号是否已绑定，避免该接口被用于枚举平台用户手机号。
+3. 浏览器调用 `POST /sms/registration/verify_code`。服务端先调用外部**校验** API，校验成功后才
+   检查该手机号是否已绑定到其他账号。通过后返回一次性 `registration_token` 和规范化后的
+   `phone_number`。
 4. 注册请求携带 `sms_phone` 和 `sms_registration_token`。`UsersController#create` 在创建账号前
    校验 Token；缺失、过期或已使用的 Token 会被拒绝。
 5. 账号创建成功后，自动写入手机号绑定以及 `bind`/`verify` 历史记录。
@@ -392,6 +394,7 @@ Content-Type: application/json
 - 发送请求会携带会员 ID 和邮箱；如服务商不应接收，可将对应字段名留空。注册阶段账号尚不存在，不发送这两个字段。
 - 验证码不会保存到数据库。
 - 注册 Token 只以 SHA-256 摘要保存，超过 `sms_registration_token_ttl_minutes` 后失效，创建账号后即被消费。
+- 注册发送验证码阶段不会暴露手机号是否已绑定；只有短信验证码校验成功后才会检查绑定关系，避免未登录用户枚举平台手机号。
 - 一个手机号只能属于一个账号（数据库唯一索引）。
 - 每个账号同时只有一个有效挑战；再次发送会替换旧挑战。
 - 挑战会过期，并受 `sms_max_verification_attempts` 限制。

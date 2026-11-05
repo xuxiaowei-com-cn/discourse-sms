@@ -66,9 +66,11 @@ is created:
 1. The browser calls `POST /sms/registration/send_code` with the phone number and, when required, a
    captcha token. These endpoints do not require a logged-in user.
 2. The server verifies the captcha, applies IP/phone rate limits, calls the external **send** API,
-   and stores a challenge keyed by phone number.
-3. The browser calls `POST /sms/registration/verify_code`. On success the server returns a one-time
-   `registration_token` and the normalized `phone_number`.
+   and stores a challenge keyed by phone number. Sending a code does **not** check whether the phone
+   is already bound, so the endpoint cannot be used to enumerate member phone numbers.
+3. The browser calls `POST /sms/registration/verify_code`. The server calls the external **verify**
+   API first and only then checks whether the phone is already bound to another account. On success it
+   returns a one-time `registration_token` and the normalized `phone_number`.
 4. The signup request carries `sms_phone` and `sms_registration_token`. `UsersController#create`
    validates the token before creating the account; a missing, expired, or reused token is refused.
 5. After the account is created, the binding and the `bind`/`verify` history rows are written.
@@ -431,6 +433,7 @@ when `sms_require_phone_binding` is still on.
 - The send request includes the member ID and email; configure blank field names if the provider must not receive them. Registration sends omit both because no account exists yet.
 - Verification codes are never stored in the database.
 - Registration tokens are stored only as SHA-256 digests, expire after `sms_registration_token_ttl_minutes`, and are consumed when the account is created.
+- Registration code sending never reveals whether a phone is already bound. The binding check runs only after the SMS code has been successfully verified, which prevents unauthenticated phone-number enumeration.
 - A phone number can belong to only one account (database unique indexes).
 - Only one active challenge exists per account; a new send replaces the previous challenge.
 - Challenges expire and are limited by `sms_max_verification_attempts`.
