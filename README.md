@@ -429,9 +429,9 @@ bind a phone number.
 Set `sms_force_phone_binding_redirect` to also redirect unbound members to
 `/my/preferences/security` whenever they try to open another page. The redirect uses the same
 exemption rules and is skipped on login, signup, account activation, password reset, admin, review,
-and wizard pages so the account can still be recovered and the setting can be turned off. Enabling
-the redirect also makes phone binding required; turning it off restores normal blocking behavior
-when `sms_require_phone_binding` is still on.
+and wizard pages so the account can still be recovered and the setting can be turned off. The
+`/srv/pv` path is also excluded. Enabling the redirect also makes phone binding required; turning it
+off restores normal blocking behavior when `sms_require_phone_binding` is still on.
 
 ## Member experience
 

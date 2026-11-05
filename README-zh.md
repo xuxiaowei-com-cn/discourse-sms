@@ -395,8 +395,8 @@ Content-Type: application/json
 
 开启 `sms_force_phone_binding_redirect` 后，未绑定的会员访问其他页面时会被跳转到
 `/my/preferences/security`。该跳转使用相同的豁免规则，并在登录、注册、账号激活、密码重置、管理、
-审核和向导页面跳过，以便会员恢复账号或管理员关闭设置。开启该跳转也会同时要求绑定手机号；关闭后，
-若 `sms_require_phone_binding` 仍开启，则恢复为仅拦截发帖等操作。
+审核和向导页面跳过，以便会员恢复账号或管理员关闭设置；`/srv/pv` 地址也不会被跳转拦截。开启该跳转
+也会同时要求绑定手机号；关闭后，若 `sms_require_phone_binding` 仍开启，则恢复为仅拦截发帖等操作。
 
 ## 会员体验
 

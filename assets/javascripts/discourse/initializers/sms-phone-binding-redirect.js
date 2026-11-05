@@ -1,5 +1,7 @@
 import { withPluginApi } from "discourse/lib/plugin-api";
 
+const SKIPPED_PATHS = ["/srv/pv"];
+
 const SKIPPED_ROUTES = [
   "preferences.security",
   "login",
@@ -15,6 +17,14 @@ const SKIPPED_ROUTES = [
   "exception",
   "404",
 ];
+
+function pathIsSkipped(path) {
+  const normalized = (path || "").replace(/\/+$/, "") || "/";
+
+  return SKIPPED_PATHS.some(
+    (skipped) => normalized === skipped || normalized.startsWith(`${skipped}/`)
+  );
+}
 
 function routeIsSkipped(routeName) {
   return SKIPPED_ROUTES.some(
@@ -48,6 +58,13 @@ export default {
 
         const currentUser = api.getCurrentUser();
         if (!currentUser?.sms_phone_binding_required) {
+          return;
+        }
+
+        const currentPath = (
+          router.currentURL || window.location.pathname
+        ).split(/[?#]/)[0];
+        if (pathIsSkipped(currentPath)) {
           return;
         }
 
