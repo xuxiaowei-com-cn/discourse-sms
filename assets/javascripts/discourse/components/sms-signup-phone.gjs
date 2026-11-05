@@ -197,17 +197,6 @@ export default class SmsSignupPhone extends Component {
   }
 
   @action
-  changePhone() {
-    this.smsSignup.reset();
-    this.phone = "";
-    this.code = "";
-    this.codeSent = false;
-    this.error = null;
-    this.success = null;
-    this.#resetCaptchaWidget();
-  }
-
-  @action
   async sendCode(event) {
     event?.preventDefault?.();
 
@@ -298,7 +287,7 @@ export default class SmsSignupPhone extends Component {
       );
       this.codeSent = false;
       this.code = "";
-      this.success = i18n("sms.signup.verified");
+      this.success = null;
       this.#resetCaptchaWidget();
     } catch (error) {
       this.error = extractError(error, i18n("sms.errors.generic"));
@@ -495,13 +484,6 @@ export default class SmsSignupPhone extends Component {
             <span class="sms-phone-badge">{{i18n "sms.status.verified"}}</span>
           </div>
           <div class="instructions">{{i18n "sms.signup.verified"}}</div>
-          <button
-            type="button"
-            class="btn btn-flat"
-            {{on "click" this.changePhone}}
-          >
-            {{i18n "sms.change"}}
-          </button>
         {{else}}
           <input
             id="sms-signup-phone"
