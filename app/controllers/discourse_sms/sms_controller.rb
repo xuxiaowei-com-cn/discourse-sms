@@ -141,11 +141,6 @@ module ::DiscourseSms
 
       return if !verify_captcha_or_render_error!
 
-      unless verifying_current
-        existing = PhoneBinding.find_by(phone_number: phone)
-        return render_error(:phone_taken) if existing && existing.user_id != current_user.id
-      end
-
       enforce_send_rate_limits!(phone)
 
       ttl = SiteSetting.sms_code_ttl_minutes.to_i.minutes

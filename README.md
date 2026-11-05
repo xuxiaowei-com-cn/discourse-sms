@@ -271,7 +271,10 @@ A member cannot replace a bound phone number directly:
    number. A mismatched number is rejected without sending an SMS.
 2. A code is sent to the matching current number. After it is verified, the browser switches to the
    new-phone form.
-3. A second code is sent to the new number and must be verified to complete the change.
+3. A second code is sent to the new number and must be verified to complete the change. Sending this
+   code does not check whether the new number is already bound to another account; that check only
+   runs after the new code is successfully verified, so the send endpoint cannot be used to
+   enumerate member phone numbers.
 
 The current-phone verification is stored in the member's server session and expires after
 `sms_code_ttl_minutes`. It is cleared after the new number is saved. The old binding stays active
@@ -433,7 +436,7 @@ when `sms_require_phone_binding` is still on.
 - The send request includes the member ID and email; configure blank field names if the provider must not receive them. Registration sends omit both because no account exists yet.
 - Verification codes are never stored in the database.
 - Registration tokens are stored only as SHA-256 digests, expire after `sms_registration_token_ttl_minutes`, and are consumed when the account is created.
-- Registration code sending never reveals whether a phone is already bound. The binding check runs only after the SMS code has been successfully verified, which prevents unauthenticated phone-number enumeration.
+- Registration and phone-change code sending never reveal whether a phone is already bound. Binding checks run only after the SMS code has been successfully verified, which prevents phone-number enumeration.
 - A phone number can belong to only one account (database unique indexes).
 - Only one active challenge exists per account; a new send replaces the previous challenge.
 - Challenges expire and are limited by `sms_max_verification_attempts`.

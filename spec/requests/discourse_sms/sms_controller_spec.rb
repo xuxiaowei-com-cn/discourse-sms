@@ -216,7 +216,7 @@ RSpec.describe DiscourseSms::SmsController do
       expect(a_request(:post, send_url)).not_to have_been_made
     end
 
-    it "rejects a phone number bound to another account" do
+    it "does not reveal a phone bound to another account when sending" do
       DiscourseSms::PhoneBinding.create!(
         user: other_user,
         phone_number: phone,
@@ -232,9 +232,9 @@ RSpec.describe DiscourseSms::SmsController do
              "ACCEPT" => "application/json",
            }
 
-      expect(response.status).to eq(422)
-      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.phone_taken"))
-      expect(a_request(:post, send_url)).not_to have_been_made
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["success"]).to eq(true)
+      expect(a_request(:post, send_url)).to have_been_made.once
     end
 
     it "cleans up the challenge when the provider rejects the request" do
@@ -370,6 +370,55 @@ RSpec.describe DiscourseSms::SmsController do
         expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(old_phone)
         expect(a_request(:post, verify_url)).not_to have_been_made
       end
+    end
+
+    it "does not reveal a bound new phone until its code is verified" do
+      post "/sms/send_code.json",
+           params: {
+             purpose: "verify_current_phone",
+             sms_phone: "13900139000",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      post "/sms/verify_code.json",
+           params: {
+             sms_code: "123456",
+             purpose: "verify_current_phone",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      DiscourseSms::PhoneBinding.create!(
+        user: other_user,
+        phone_number: phone,
+        verified_at: Time.zone.now,
+      )
+
+      post "/sms/send_code.json",
+           params: {
+             sms_phone: "13800138000",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(a_request(:post, send_url)).to have_been_made.times(2)
+
+      post "/sms/verify_code.json",
+           params: {
+             sms_code: "123456",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(422)
+      expect(response.parsed_body["errors"].first).to eq(I18n.t("sms.errors.phone_taken"))
+      expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(old_phone)
     end
 
     it "changes the phone only after verifying the current phone" do
