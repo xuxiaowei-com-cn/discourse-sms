@@ -11,6 +11,7 @@ en:
         description: "Enter and verify a phone number before creating your account. We will send a verification code by SMS."
         verified: "Phone number verified. You can finish creating your account."
         verification_required: "Verify your phone number before creating an account."
+        verify_before_continue: "Verify your phone number before continuing."
       status:
         verified: "Verified"
         unverified: "Not verified"

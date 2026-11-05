@@ -30,6 +30,49 @@ export default class SmsSignupPhone extends Component {
   @tracked captchaToken = null;
   @tracked captchaLoadFailed = false;
 
+  gateContinue = modifier((element, [verified]) => {
+    const form = element.closest("form");
+    let button = null;
+    let frame = null;
+    let onSubmit = null;
+
+    const bind = () => {
+      button =
+        form?.querySelector(".code-login-form__continue") ||
+        document.querySelector(".signup-page-cta__signup");
+
+      if (!button) {
+        if (form || document.querySelector(".signup-page-cta")) {
+          frame = requestAnimationFrame(bind);
+        }
+        return;
+      }
+
+      onSubmit = (event) => {
+        if (!verified) {
+          event.preventDefault();
+          event.stopPropagation();
+        }
+      };
+
+      button.disabled = !verified;
+      button.title = verified ? "" : i18n("sms.signup.verify_before_continue");
+      form?.addEventListener("submit", onSubmit, true);
+    };
+
+    bind();
+
+    return () => {
+      cancelAnimationFrame(frame);
+      if (onSubmit) {
+        form?.removeEventListener("submit", onSubmit, true);
+      }
+      if (button) {
+        button.disabled = false;
+        button.title = "";
+      }
+    };
+  });
   renderCaptcha = modifier((element) => {
     if (!this.showCaptchaWidget || !this.captchaConfigured) {
       return;
@@ -534,6 +577,12 @@ export default class SmsSignupPhone extends Component {
             </div>
           {{/if}}
         {{/if}}
+
+        <span
+          class="sms-signup-continue-gate"
+          style="display: none"
+          {{this.gateContinue this.smsSignup.verified}}
+        ></span>
 
         {{#if this.error}}
           <div class="alert alert-error">{{this.error}}</div>
