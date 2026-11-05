@@ -409,6 +409,10 @@ when `sms_require_phone_binding` is still on.
 - **Signup says the phone must be verified** — the registration token is missing, expired, already
   used, or was issued for a different number. Verify the phone again and finish signup within
   `sms_registration_token_ttl_minutes`.
+- **"Too many requests. Please wait..." while requesting an email code** — Discourse core limits
+  email login codes to 6 per IP and 3 per email per hour. This is not a plugin limit. Wait for the
+  window to pass, use another email address, or clear the `*login-code*` rate-limit keys in Redis in
+  a development environment.
 - **An unbound member is redirected in a loop** — check that `/my/preferences/security` opens and the
   phone form is visible; the redirect stops as soon as `sms_phone_binding_required` becomes false.
 - **Administrators are redirected away from the admin panel** — admin, review, and wizard routes are

@@ -373,6 +373,9 @@ Content-Type: application/json
   `sms skip phone binding usernames`，或确认其已完成手机号验证。
 - **注册时提示必须先验证手机号** — 注册 Token 缺失、过期、已被使用，或与手机号不匹配。请重新验证
   手机号，并在 `sms_registration_token_ttl_minutes` 内完成注册。
+- **获取邮箱验证码时提示“操作次数过多，请等待 50 分钟”** — 这是 Discourse 核心的邮箱验证码限流：
+  每个 IP 每小时 6 次、每个邮箱每小时 3 次，不是本插件的限制。等待限流窗口结束、更换邮箱，或在开发
+  环境清理 Redis 中的 `*login-code*` 限流键。
 - **未绑定会员被反复跳转** — 确认 `/my/preferences/security` 可以打开且手机号表单正常显示；绑定成功后
   `sms_phone_binding_required` 变为 `false`，跳转即停止。
 - **管理员被跳离管理后台** — 管理、审核和向导路由已跳过；也可以直接在**管理 → 设置 → 插件**中关闭该设置。
