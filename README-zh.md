@@ -28,7 +28,7 @@
 - 支持 Bearer Token 或自定义请求头/前缀认证。
 - 支持通过 HTTP 状态码或可配置 JSON 路径判断服务商返回是否成功。
 - 认证 Token 仅在服务端使用，绝不下发到浏览器。
-- 默认在用户被删除或匿名化时保留手机号绑定和历史记录；可通过 `sms_delete_phone_data_on_user_delete` 开启删除。
+- 默认在用户被删除或匿名化时保留手机号绑定、历史记录和验证挑战；可通过 `sms_delete_phone_data_on_user_delete` 开启删除。
 
 ## 环境要求
 
@@ -128,7 +128,7 @@ sv restart unicorn
 | `sms_force_phone_binding_redirect` | `false` | 强制未绑定手机号的会员跳转到**偏好设置 → 安全性**；开启后也会同时要求绑定手机号。 |
 | `sms_require_phone_on_signup` | `false` | 本地注册时是否必须验证手机号，未验证不允许创建账号。 |
 | `sms_allow_phone_change` | `true` | 是否允许会员更换已绑定的手机号。关闭后，已绑定会员不能更换；未绑定会员仍可正常绑定。 |
-| `sms_delete_phone_data_on_user_delete` | `false` | 会员被删除或匿名化时是否删除手机号绑定和历史记录。默认关闭，保留审计数据。 |
+| `sms_delete_phone_data_on_user_delete` | `false` | 会员被删除或匿名化时是否删除手机号绑定、历史记录和验证挑战。默认关闭，保留审计数据。 |
 | `sms_registration_token_ttl_minutes` | `30` | 手机号验证通过后，一次性注册 Token 的有效期（分钟）。 |
 | `sms_skip_phone_binding_groups` | `1\|2` | 可跳过绑定要求的用户组。默认管理员和版主。 |
 | `sms_skip_phone_binding_usernames` | 空 | 可跳过绑定要求的用户名，多个用逗号或 `\|` 分隔。 |
@@ -372,7 +372,8 @@ Content-Type: application/json
 首次绑定、更换手机号、以及短信验证码验证成功（包括更换手机号前的当前手机号验证）都会写入历史。
 更换手机号时会为旧号码记录 `unbind`，为新号码记录 `bind` 和 `verify`。注册时验证手机号并通过
 注册创建账号后，会记录 `bind` 和 `verify`。默认情况下，用户被删除或匿名化时保留历史记录和绑定；
-将 `sms_delete_phone_data_on_user_delete` 设为 `true` 后会随账号一起删除。
+将 `sms_delete_phone_data_on_user_delete` 设为 `true` 后会随账号一起删除。验证挑战表仍然表示临时流程
+状态：重新发送会覆盖，验证成功后会删除；注册挑战也会被新的发送请求覆盖。
 
 历史记录目前用于审计，可通过数据库或 Rails 控制台查询，暂未增加会员界面。
 
@@ -445,8 +446,8 @@ Content-Type: application/json
 - 每个账号同时只有一个有效挑战；再次发送会替换旧挑战。
 - 挑战会过期，并受 `sms_max_verification_attempts` 限制。
 - 限流按账号、手机号和重发冷却生效。
-- 默认在用户被删除或匿名化时保留手机号绑定和历史记录；开启 `sms_delete_phone_data_on_user_delete` 后才会删除。
-- 绑定、历史事件和验证挑战会记录 IP 地址和 User-Agent，用于审计和滥用排查；绑定与历史数据遵循同一保留开关。
+- 默认在用户被删除或匿名化时保留手机号绑定、历史记录和验证挑战；开启 `sms_delete_phone_data_on_user_delete` 后才会删除。
+- 绑定、历史事件和验证挑战会记录 IP 地址和 User-Agent，用于审计和滥用排查；绑定、历史与验证挑战遵循同一保留开关。
 - 使用只追加的手机号历史表记录绑定、解绑和验证事件。
 - `sms_require_captcha` 开启时，人机验证未启用或未配置会拒绝发送。
 - `sms_require_phone_binding` 开启时，未绑定且不在豁免名单中的账号不能发帖、回复或发送私信。

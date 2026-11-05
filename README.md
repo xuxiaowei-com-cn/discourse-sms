@@ -30,7 +30,7 @@ one API to verify it.
 - Provider authentication with a bearer token (or a custom header/scheme).
 - Provider success detection through HTTP status or a configurable JSON path.
 - Server-side verification only: the provider token is never exposed to the browser.
-- Phone bindings and history are retained by default when a member is destroyed or anonymized; `sms_delete_phone_data_on_user_delete` can remove them with the account.
+- Phone bindings, history, and challenge records are retained by default when a member is destroyed or anonymized; `sms_delete_phone_data_on_user_delete` can remove them with the account.
 - An append-only phone history records bind, unbind, and verify events.
 
 ## Requirements
@@ -139,7 +139,7 @@ All settings are under **Admin → Settings → Plugins**.
 | `sms_force_phone_binding_redirect` | `false` | Forces unbound members to **Preferences → Security**. Enabling it also makes phone binding required. |
 | `sms_require_phone_on_signup` | `false` | Requires local registrations to verify a phone number before the account is created. |
 | `sms_allow_phone_change` | `true` | Allows members to change an already bound phone number. When off, bound members cannot change it; unbound members can still bind. |
-| `sms_delete_phone_data_on_user_delete` | `false` | Deletes bindings and history when a member is destroyed or anonymized. Off by default so the audit trail is retained. |
+| `sms_delete_phone_data_on_user_delete` | `false` | Deletes bindings, history, and challenge records when a member is destroyed or anonymized. Off by default so the audit trail is retained. |
 | `sms_registration_token_ttl_minutes` | `30` | How long the one-time registration token remains valid after phone verification. |
 | `sms_skip_phone_binding_groups` | `1\|2` | Groups that can skip the binding requirement. Defaults to admins and moderators. |
 | `sms_skip_phone_binding_usernames` | empty | Individual usernames that can skip the binding requirement (comma or `\|` separated). |
@@ -399,8 +399,11 @@ Events are recorded when a phone is first bound, when an old number is replaced,
 is successfully verified (including the current-phone check before a change). Replacing a number
 produces `unbind` for the old number and `bind`/`verify` for the new number. A registration that
 verified a phone number before signup produces `bind` and `verify` rows once the account is created.
-By default history rows and bindings are retained when a user is destroyed or anonymized. Set
-`sms_delete_phone_data_on_user_delete` to `true` to delete them together with the account.
+By default bindings, history rows, and challenge records are retained when a user is destroyed or
+anonymized. Set `sms_delete_phone_data_on_user_delete` to `true` to delete them together with the
+account. Challenge tables still represent temporary process state: verification challenges are
+replaced on resend and removed after a successful verification, while registration challenges are
+overwritten by a new code request.
 
 History is currently stored for auditing and can be queried from the database or Rails console; it
 does not add a member-facing UI.
@@ -486,7 +489,7 @@ when `sms_require_phone_binding` is still on.
 - Only one active challenge exists per account; a new send replaces the previous challenge.
 - Challenges expire and are limited by `sms_max_verification_attempts`.
 - Rate limits apply per account, per phone number, and as a resend cooldown.
-- Phone bindings and history are retained by default when a user is destroyed or anonymized; enable `sms_delete_phone_data_on_user_delete` to remove them.
+- Phone bindings, history, and challenge records are retained by default when a user is destroyed or anonymized; enable `sms_delete_phone_data_on_user_delete` to remove them.
 - IP addresses and user agents are stored on bindings, history events, and challenges for audit and abuse investigation. They follow the same retention setting as bindings and history.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
 - When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or personal messages.

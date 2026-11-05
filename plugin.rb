@@ -63,20 +63,18 @@ after_initialize do
   # account is created; this event finishes the binding for the new user.
   on(:user_created) { |user| DiscourseSms::Registration.complete!(user) }
 
-  # Pending challenges are temporary and always removed. Bindings and history
-  # are retained by default so administrators can keep an audit trail; enable
-  # sms_delete_phone_data_on_user_delete to remove them with the account.
+  # All phone data is retained by default so administrators can keep an audit
+  # trail. Enable sms_delete_phone_data_on_user_delete to remove bindings,
+  # history, verification challenges, and the matching registration challenge
+  # with the account.
   cleanup_phone_data = ->(user) do
-    DiscourseSms::VerificationChallenge.where(user_id: user.id).delete_all
+    next if !SiteSetting.sms_delete_phone_data_on_user_delete
 
-    if SiteSetting.sms_delete_phone_data_on_user_delete
-      phone_number = DiscourseSms::PhoneBinding.where(user_id: user.id).pick(:phone_number)
-      DiscourseSms::PhoneBinding.where(user_id: user.id).delete_all
-      DiscourseSms::PhoneHistory.where(user_id: user.id).delete_all
-      if phone_number
-        DiscourseSms::RegistrationChallenge.where(phone_number: phone_number).delete_all
-      end
-    end
+    phone_number = DiscourseSms::PhoneBinding.where(user_id: user.id).pick(:phone_number)
+    DiscourseSms::PhoneBinding.where(user_id: user.id).delete_all
+    DiscourseSms::PhoneHistory.where(user_id: user.id).delete_all
+    DiscourseSms::VerificationChallenge.where(user_id: user.id).delete_all
+    DiscourseSms::RegistrationChallenge.where(phone_number: phone_number).delete_all if phone_number
   end
 
   on(:user_destroyed) { |user| cleanup_phone_data.call(user) }
