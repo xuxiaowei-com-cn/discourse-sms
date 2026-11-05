@@ -14,6 +14,7 @@ const SKIPPED_ROUTES = [
   "admin",
   "review",
   "wizard",
+  "srv",
   "exception",
   "404",
 ];
@@ -22,7 +23,10 @@ function pathIsSkipped(path) {
   const normalized = (path || "").replace(/\/+$/, "") || "/";
 
   return SKIPPED_PATHS.some(
-    (skipped) => normalized === skipped || normalized.startsWith(`${skipped}/`)
+    (skipped) =>
+      normalized === skipped ||
+      normalized.endsWith(skipped) ||
+      normalized.includes(`${skipped}/`)
   );
 }
 
@@ -62,7 +66,7 @@ export default {
         }
 
         const currentPath = (
-          router.currentURL || window.location.pathname
+          window.location.pathname || router.currentURL
         ).split(/[?#]/)[0];
         if (pathIsSkipped(currentPath)) {
           return;
