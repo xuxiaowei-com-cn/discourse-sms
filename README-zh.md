@@ -267,6 +267,19 @@ Content-Type: application/json
 `db/migrate/20261018000001_create_discourse_sms_phone_histories.rb` 和
 `db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb`。
 
+### 四张表的职责
+
+| 表 | 用途 | 数据粒度 |
+| --- | --- | --- |
+| `discourse_sms_phone_bindings` | 当前已验证的手机号绑定 | 每个会员一行 |
+| `discourse_sms_phone_histories` | 只追加的手机号审计历史 | 每个会员可有多行 |
+| `discourse_sms_registration_challenges` | 匿名注册阶段的手机号验证 | 每个手机号一行 |
+| `discourse_sms_verification_challenges` | 已登录会员绑定或更换手机号的待验证挑战 | 每个会员一行 |
+
+四张表相互配合：`phone_bindings` 表示当前状态，`phone_histories` 是历史审计，
+`registration_challenges` 处理账号创建前的注册验证，`verification_challenges` 处理登录后的
+绑定或更换手机号验证。
+
 ### `discourse_sms_phone_bindings`
 
 每个已验证手机号的会员一行。
@@ -321,6 +334,27 @@ Content-Type: application/json
 | `phone_number` | string(20) | 事件对应的 E.164 手机号。有索引。 |
 | `event_type` | string(20) | `bind`、`unbind` 或 `verify`。 |
 | `created_at` / `updated_at` | datetime | Rails 时间戳；`created_at` 即事件时间。 |
+
+### 四张表如何配合
+
+```text
+注册流程
+  registration_challenges
+    -> 短信验证码验证成功
+    -> 一次性注册 Token
+    -> 创建账号
+         -> phone_bindings   插入当前绑定
+         -> phone_histories  追加 bind + verify
+
+登录后绑定或更换手机号
+  verification_challenges
+    -> 短信验证码验证成功
+    -> phone_bindings   插入或更新当前绑定
+    -> phone_histories  追加 bind / unbind / verify
+```
+
+`phone_bindings` 始终表示当前状态，`phone_histories` 记录历史操作轨迹；两张挑战表只是临时流程
+状态，不是绑定关系的权威数据源。
 
 ## 手机号历史
 

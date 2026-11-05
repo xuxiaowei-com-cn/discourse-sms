@@ -292,6 +292,19 @@ The plugin adds four tables. Migrations are in
 `db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`, and
 `db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb`.
 
+### Table roles
+
+| Table | Purpose | Granularity |
+| --- | --- | --- |
+| `discourse_sms_phone_bindings` | Current verified binding | One row per member |
+| `discourse_sms_phone_histories` | Append-only audit trail | Many rows per member |
+| `discourse_sms_registration_challenges` | Phone verification during anonymous registration | One row per phone number |
+| `discourse_sms_verification_challenges` | Pending verification for signed-in binding or phone change | One row per member |
+
+The tables are complementary: `phone_bindings` is the current state, `phone_histories` is the audit
+log, `registration_challenges` covers signup before a user exists, and `verification_challenges`
+covers binding or changing a phone after login.
+
 ### `discourse_sms_phone_bindings`
 
 One row per member with a verified phone number.
@@ -347,6 +360,27 @@ Append-only audit history for phone events.
 | `phone_number` | string(20) | E.164 number for the event. Indexed. |
 | `event_type` | string(20) | `bind`, `unbind`, or `verify`. |
 | `created_at` / `updated_at` | datetime | Rails timestamps; `created_at` is the event time. |
+
+### How the tables work together
+
+```text
+Registration
+  registration_challenges
+    -> SMS code verified
+    -> one-time registration token
+    -> account created
+         -> phone_bindings   (insert current binding)
+         -> phone_histories  (append bind + verify)
+
+Signed-in binding or phone change
+  verification_challenges
+    -> SMS code verified
+    -> phone_bindings   (insert or update current binding)
+    -> phone_histories  (append bind / unbind / verify)
+```
+
+`phone_bindings` always represents the current state; `phone_histories` records what happened over
+time. Challenge rows are temporary process state and are not the source of truth for the binding.
 
 ## Phone history
 
