@@ -488,8 +488,14 @@ export default class SmsSignupPhone extends Component {
           <input
             id="sms-signup-phone"
             class="input-large sms-phone-input"
-            type="tel"
-            autocomplete="tel"
+            type="text"
+            inputmode="tel"
+            autocomplete="off"
+            autocapitalize="none"
+            spellcheck="false"
+            data-1p-ignore
+            data-lpignore="true"
+            data-form-type="other"
             disabled={{this.codeSent}}
             placeholder={{i18n "sms.phone_placeholder"}}
             value={{this.phone}}
@@ -543,7 +549,13 @@ export default class SmsSignupPhone extends Component {
                 id="sms-signup-code"
                 class="input-medium"
                 type="text"
-                autocomplete="one-time-code"
+                inputmode="numeric"
+                autocomplete="off"
+                autocapitalize="none"
+                spellcheck="false"
+                data-1p-ignore
+                data-lpignore="true"
+                data-form-type="other"
                 placeholder={{i18n "sms.code_placeholder"}}
                 value={{this.code}}
                 {{on "input" this.onCodeInput}}
