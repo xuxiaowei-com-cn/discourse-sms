@@ -34,6 +34,7 @@ export default class SmsSignupPhone extends Component {
     const form = element.closest("form");
     let button = null;
     let frame = null;
+    let attempts = 0;
     let onSubmit = null;
 
     const bind = () => {
@@ -42,7 +43,11 @@ export default class SmsSignupPhone extends Component {
         document.querySelector(".signup-page-cta__signup");
 
       if (!button) {
-        if (form || document.querySelector(".signup-page-cta")) {
+        attempts++;
+        if (
+          attempts < 120 &&
+          (form || document.querySelector(".signup-page-cta"))
+        ) {
           frame = requestAnimationFrame(bind);
         }
         return;
