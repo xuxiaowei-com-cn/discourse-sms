@@ -30,6 +30,7 @@ zh_CN:
     sms_force_phone_binding_redirect: "强制未绑定手机号的会员跳转到“偏好设置 → 安全”页面完成绑定。启用后也会同时要求绑定手机号；管理员可在后台关闭此设置。"
     sms_require_phone_on_signup: "要求新会员在注册时填写并验证手机号，未验证手机号将无法完成本地注册。"
     sms_allow_phone_change: "允许会员更换已绑定的手机号。关闭后，已绑定手机号的会员将无法更换；未绑定会员仍可正常绑定。"
+    sms_delete_phone_data_on_user_delete: "会员被删除或匿名化时，同时删除手机号绑定和历史记录。默认关闭，保留数据用于审计。"
     sms_registration_token_ttl_minutes: "注册手机号验证通过后，注册令牌的有效期（分钟）。会员需要在此时间内完成注册。"
     sms_skip_phone_binding_groups: "这些用户组的成员可以跳过手机号绑定要求。"
     sms_skip_phone_binding_usernames: "可以跳过手机号绑定要求的用户名。多个用户名用逗号或 <code>|</code> 分隔。"

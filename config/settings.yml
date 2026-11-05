@@ -16,6 +16,8 @@ plugins:
   sms_allow_phone_change:
     default: true
     client: true
+  sms_delete_phone_data_on_user_delete:
+    default: false
   sms_registration_token_ttl_minutes:
     default: 30
     min: 5

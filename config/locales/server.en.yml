@@ -30,6 +30,7 @@ en:
     sms_force_phone_binding_redirect: "Force members without a verified phone number to the Preferences → Security page to bind one. Enabling this also requires phone binding; administrators can turn it off in the admin panel."
     sms_require_phone_on_signup: "Require new members to enter and verify a phone number during local registration. Registration is refused until the phone number is verified."
     sms_allow_phone_change: "Allow members to change an already bound phone number. When disabled, bound members cannot change their number; unbound members can still bind one."
+    sms_delete_phone_data_on_user_delete: "Delete phone bindings and history when a member is destroyed or anonymized. Disabled by default so the audit trail is retained."
     sms_registration_token_ttl_minutes: "How long the one-time registration token remains valid after the phone number is verified. The member must finish registration within this window."
     sms_skip_phone_binding_groups: "Groups whose members can skip the phone binding requirement."
     sms_skip_phone_binding_usernames: "Usernames that can skip the phone binding requirement. Separate multiple usernames with commas or <code>|</code>."
