@@ -17,7 +17,7 @@ RSpec.describe "discourse-sms registration verification" do
     SiteSetting.sms_code_ttl_minutes = 10
     SiteSetting.sms_registration_token_ttl_minutes = 30
     SiteSetting.sms_resend_interval_seconds = 0
-    SiteSetting.sms_max_sends_per_hour = 0
+    SiteSetting.sms_max_sends_per_hour = 100
     SiteSetting.sms_max_verification_attempts = 5
     SiteSetting.sms_verify_success_json_path = ""
     SiteSetting.sms_verify_success_value = ""
