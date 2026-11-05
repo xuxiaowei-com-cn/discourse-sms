@@ -9,6 +9,14 @@ module ::DiscourseSms
 
       context = DiscourseSms::Registration.context_for(params, session: server_session)
 
+      if context.is_a?(Hash)
+        context =
+          context.merge(
+            ip_address: request.remote_ip,
+            user_agent: request.user_agent.to_s.truncate(500),
+          )
+      end
+
       if context == false
         return(
           render json: { success: false, message: I18n.t("sms.errors.registration_phone_required") }

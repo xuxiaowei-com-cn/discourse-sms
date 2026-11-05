@@ -20,7 +20,7 @@ module ::DiscourseSms
 
     scope :expired, -> { where("expires_at <= ?", Time.zone.now) }
 
-    def self.issue!(phone_number:, ttl:)
+    def self.issue!(phone_number:, ttl:, ip_address: nil, user_agent: nil)
       now = Time.zone.now
       attributes = {
         phone_number: phone_number,
@@ -31,6 +31,8 @@ module ::DiscourseSms
         token_digest: nil,
         token_expires_at: nil,
         consumed_at: nil,
+        ip_address: ip_address,
+        user_agent: user_agent.to_s.truncate(500),
       }
 
       challenge = find_or_initialize_by(phone_number: phone_number)
@@ -101,10 +103,12 @@ end
 #  attempts         :integer          default(0), not null
 #  consumed_at      :datetime
 #  expires_at       :datetime         not null
+#  ip_address       :string(45)
 #  phone_number     :string(20)       not null
 #  sent_at          :datetime         not null
 #  token_digest     :string(64)
 #  token_expires_at :datetime
+#  user_agent       :string(500)
 #  verified_at      :datetime
 #  created_at       :datetime         not null
 #  updated_at       :datetime         not null

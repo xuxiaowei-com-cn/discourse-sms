@@ -42,7 +42,9 @@ end
 # Table name: discourse_sms_phone_bindings
 #
 #  id           :bigint           not null, primary key
+#  ip_address   :string(45)
 #  phone_number :string(20)       not null
+#  user_agent   :string(500)
 #  verified_at  :datetime         not null
 #  created_at   :datetime         not null
 #  updated_at   :datetime         not null

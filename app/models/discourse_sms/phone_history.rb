@@ -15,10 +15,16 @@ module ::DiscourseSms
 
     scope :recent, -> { order(created_at: :desc, id: :desc) }
 
-    def self.record!(user:, phone_number:, event_type:)
+    def self.record!(user:, phone_number:, event_type:, ip_address: nil, user_agent: nil)
       return if user.nil? || phone_number.blank?
 
-      create!(user_id: user.id, phone_number: phone_number, event_type: event_type.to_s)
+      create!(
+        user_id: user.id,
+        phone_number: phone_number,
+        event_type: event_type.to_s,
+        ip_address: ip_address,
+        user_agent: user_agent.to_s.truncate(500),
+      )
     rescue StandardError => e
       Rails.logger.warn("[discourse-sms] failed to record phone history: #{e.class}: #{e.message}")
       nil
@@ -40,7 +46,9 @@ end
 #
 #  id           :bigint           not null, primary key
 #  event_type   :string(20)       not null
+#  ip_address   :string(45)
 #  phone_number :string(20)       not null
+#  user_agent   :string(500)
 #  created_at   :datetime         not null
 #  updated_at   :datetime         not null
 #  user_id      :integer          not null

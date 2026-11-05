@@ -216,6 +216,22 @@ RSpec.describe DiscourseSms::SmsController do
       expect(a_request(:post, send_url)).not_to have_been_made
     end
 
+    it "records the request IP and user agent on the challenge" do
+      post "/sms/send_code.json",
+           params: {
+             sms_phone: "13800138000",
+             captcha_token: "captcha-token",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+             "HTTP_USER_AGENT" => "SMS Binding Test",
+           }
+
+      challenge = DiscourseSms::VerificationChallenge.find_by(user_id: user.id)
+      expect(challenge.ip_address).to be_present
+      expect(challenge.user_agent).to eq("SMS Binding Test")
+    end
+
     it "does not reveal a phone bound to another account when sending" do
       DiscourseSms::PhoneBinding.create!(
         user: other_user,

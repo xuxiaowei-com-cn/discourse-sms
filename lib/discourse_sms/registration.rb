@@ -75,14 +75,28 @@ module ::DiscourseSms
       binding = PhoneBinding.find_or_initialize_by(user_id: user.id)
       binding.phone_number = challenge.phone_number
       binding.verified_at = Time.zone.now
+      binding.ip_address = context[:ip_address]
+      binding.user_agent = context[:user_agent].to_s.truncate(500)
 
       PhoneBinding.transaction do
         binding.save!
         challenge.consume!
       end
 
-      PhoneHistory.record!(user: user, phone_number: binding.phone_number, event_type: "bind")
-      PhoneHistory.record!(user: user, phone_number: binding.phone_number, event_type: "verify")
+      PhoneHistory.record!(
+        user: user,
+        phone_number: binding.phone_number,
+        event_type: "bind",
+        ip_address: context[:ip_address],
+        user_agent: context[:user_agent],
+      )
+      PhoneHistory.record!(
+        user: user,
+        phone_number: binding.phone_number,
+        event_type: "verify",
+        ip_address: context[:ip_address],
+        user_agent: context[:user_agent],
+      )
     rescue StandardError => e
       Rails.logger.error(
         "[discourse-sms] failed to bind phone for new user #{user&.id}: #{e.class}: #{e.message}",

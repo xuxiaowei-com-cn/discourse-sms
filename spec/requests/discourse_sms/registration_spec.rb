@@ -59,6 +59,22 @@ RSpec.describe "discourse-sms registration verification" do
       expect(a_request(:post, send_url)).to have_been_made.once
     end
 
+    it "records the request IP and user agent on the challenge" do
+      post "/sms/registration/send_code.json",
+           params: {
+             sms_phone: "13800138000",
+             captcha_token: "captcha-token",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+             "HTTP_USER_AGENT" => "SMS Registration Test",
+           }
+
+      challenge = DiscourseSms::RegistrationChallenge.find_by(phone_number: phone)
+      expect(challenge.ip_address).to be_present
+      expect(challenge.user_agent).to eq("SMS Registration Test")
+    end
+
     it "does not reveal a bound phone when sending a code" do
       DiscourseSms::PhoneBinding.create!(
         user: Fabricate(:user),

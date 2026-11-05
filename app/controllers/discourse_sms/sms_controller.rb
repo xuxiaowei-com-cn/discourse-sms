@@ -36,7 +36,13 @@ module ::DiscourseSms
       Registration.clear_session!(server_session)
 
       ttl = SiteSetting.sms_code_ttl_minutes.to_i.minutes
-      challenge = RegistrationChallenge.issue!(phone_number: phone, ttl: ttl)
+      challenge =
+        RegistrationChallenge.issue!(
+          phone_number: phone,
+          ttl: ttl,
+          ip_address: request_ip_address,
+          user_agent: request_user_agent,
+        )
 
       begin
         ApiClient.new.send_code(phone: phone)
@@ -144,7 +150,14 @@ module ::DiscourseSms
       enforce_send_rate_limits!(phone)
 
       ttl = SiteSetting.sms_code_ttl_minutes.to_i.minutes
-      challenge = VerificationChallenge.issue!(user: current_user, phone_number: phone, ttl: ttl)
+      challenge =
+        VerificationChallenge.issue!(
+          user: current_user,
+          phone_number: phone,
+          ttl: ttl,
+          ip_address: request_ip_address,
+          user_agent: request_user_agent,
+        )
 
       begin
         ApiClient.new.send_code(phone: phone, user: current_user)
@@ -205,6 +218,8 @@ module ::DiscourseSms
               user: current_user,
               phone_number: binding.phone_number,
               event_type: "verify",
+              ip_address: request_ip_address,
+              user_agent: request_user_agent,
             )
             authorize_phone_change!
             challenge.destroy!
@@ -224,6 +239,14 @@ module ::DiscourseSms
     end
 
     private
+
+    def request_ip_address
+      request.remote_ip
+    end
+
+    def request_user_agent
+      request.user_agent.to_s.truncate(500)
+    end
 
     def registration_phone
       PhoneNumber.normalize(
@@ -286,6 +309,8 @@ module ::DiscourseSms
       previous_phone = binding.persisted? ? binding.phone_number_was : nil
       binding.phone_number = challenge.phone_number
       binding.verified_at = Time.zone.now
+      binding.ip_address = request_ip_address
+      binding.user_agent = request_user_agent
 
       PhoneBinding.transaction do
         binding.save!
@@ -293,7 +318,13 @@ module ::DiscourseSms
       end
 
       if previous_phone.present? && previous_phone != binding.phone_number
-        PhoneHistory.record!(user: current_user, phone_number: previous_phone, event_type: "unbind")
+        PhoneHistory.record!(
+          user: current_user,
+          phone_number: previous_phone,
+          event_type: "unbind",
+          ip_address: request_ip_address,
+          user_agent: request_user_agent,
+        )
       end
 
       if previous_phone != binding.phone_number
@@ -301,6 +332,8 @@ module ::DiscourseSms
           user: current_user,
           phone_number: binding.phone_number,
           event_type: "bind",
+          ip_address: request_ip_address,
+          user_agent: request_user_agent,
         )
       end
 
@@ -308,6 +341,8 @@ module ::DiscourseSms
         user: current_user,
         phone_number: binding.phone_number,
         event_type: "verify",
+        ip_address: request_ip_address,
+        user_agent: request_user_agent,
       )
 
       clear_phone_change_authorization!

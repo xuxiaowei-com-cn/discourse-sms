@@ -289,8 +289,9 @@ still bind their first phone number.
 
 The plugin adds four tables. Migrations are in
 `db/migrate/20261018000000_create_discourse_sms_tables.rb`,
-`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`, and
-`db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb`.
+`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`,
+`db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb`, and
+`db/migrate/20261105060000_add_ip_and_user_agent_to_discourse_sms_tables.rb`.
 
 ### Table roles
 
@@ -315,6 +316,8 @@ One row per member with a verified phone number.
 | `user_id` | integer | Member ID. Unique index; one binding per account. |
 | `phone_number` | string(20) | E.164 number. Unique index; one account per number. |
 | `verified_at` | datetime | When the number was verified. |
+| `ip_address` | string(45) | IP address of the bind or last change request. |
+| `user_agent` | string(500) | User agent of the bind or last change request. |
 | `created_at` / `updated_at` | datetime | Rails timestamps. |
 
 ### `discourse_sms_verification_challenges`
@@ -329,6 +332,8 @@ One active challenge per member, replaced when a new code is requested.
 | `sent_at` | datetime | When the code was requested. |
 | `expires_at` | datetime | Challenge expiry. Indexed. |
 | `attempts` | integer | Failed verification attempts, default `0`. |
+| `ip_address` | string(45) | IP address that requested the code. |
+| `user_agent` | string(500) | User agent that requested the code. |
 | `created_at` / `updated_at` | datetime | Rails timestamps. |
 
 ### `discourse_sms_registration_challenges`
@@ -343,6 +348,8 @@ so it is keyed by phone number rather than by `user_id`.
 | `sent_at` | datetime | When the code was requested. |
 | `expires_at` | datetime | Challenge expiry. Indexed. |
 | `attempts` | integer | Failed verification attempts, default `0`. |
+| `ip_address` | string(45) | IP address that requested the code. |
+| `user_agent` | string(500) | User agent that requested the code. |
 | `verified_at` | datetime | When the provider accepted the code. |
 | `token_digest` | string(64) | SHA-256 digest of the one-time registration token. Unique index. The raw token is never stored. |
 | `token_expires_at` | datetime | Expiry of the registration token. |
@@ -359,6 +366,8 @@ Append-only audit history for phone events.
 | `user_id` | integer | Member ID. Indexed, including a composite `(user_id, created_at)` index. |
 | `phone_number` | string(20) | E.164 number for the event. Indexed. |
 | `event_type` | string(20) | `bind`, `unbind`, or `verify`. |
+| `ip_address` | string(45) | IP address of the request that produced the event. |
+| `user_agent` | string(500) | User agent of the request that produced the event. |
 | `created_at` / `updated_at` | datetime | Rails timestamps; `created_at` is the event time. |
 
 ### How the tables work together
@@ -478,6 +487,7 @@ when `sms_require_phone_binding` is still on.
 - Challenges expire and are limited by `sms_max_verification_attempts`.
 - Rate limits apply per account, per phone number, and as a resend cooldown.
 - Phone bindings and history are retained by default when a user is destroyed or anonymized; enable `sms_delete_phone_data_on_user_delete` to remove them.
+- IP addresses and user agents are stored on bindings, history events, and challenges for audit and abuse investigation. They follow the same retention setting as bindings and history.
 - When `sms_require_captcha` is on, the send endpoint refuses to run unless captcha is enabled and configured.
 - When `sms_require_phone_binding` is on, unbound non-exempt accounts cannot create topics, replies, or personal messages.
 - When `sms_require_phone_on_signup` is on, `UsersController#create` and the email-code signup path in `SessionController#verify_login_code` reject requests without a valid one-time registration token. The token is bound to the verified phone number, expires, and is single-use.

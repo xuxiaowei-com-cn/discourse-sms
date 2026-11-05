@@ -264,8 +264,9 @@ Content-Type: application/json
 
 插件会创建四张表。迁移文件位于
 `db/migrate/20261018000000_create_discourse_sms_tables.rb`、
-`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb` 和
-`db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb`。
+`db/migrate/20261018000001_create_discourse_sms_phone_histories.rb`、
+`db/migrate/20261104120000_create_discourse_sms_registration_challenges.rb` 和
+`db/migrate/20261105060000_add_ip_and_user_agent_to_discourse_sms_tables.rb`。
 
 ### 四张表的职责
 
@@ -290,6 +291,8 @@ Content-Type: application/json
 | `user_id` | integer | 会员 ID。唯一索引；每个账号一条绑定。 |
 | `phone_number` | string(20) | E.164 手机号。唯一索引；一个手机号只属于一个账号。 |
 | `verified_at` | datetime | 验证时间。 |
+| `ip_address` | string(45) | 绑定或最近一次更换请求的 IP 地址。 |
+| `user_agent` | string(500) | 绑定或最近一次更换请求的 User-Agent。 |
 | `created_at` / `updated_at` | datetime | Rails 时间戳。 |
 
 ### `discourse_sms_verification_challenges`
@@ -304,6 +307,8 @@ Content-Type: application/json
 | `sent_at` | datetime | 发送验证码的时间。 |
 | `expires_at` | datetime | 挑战过期时间。有索引。 |
 | `attempts` | integer | 验证失败次数，默认 `0`。 |
+| `ip_address` | string(45) | 请求验证码的 IP 地址。 |
+| `user_agent` | string(500) | 请求验证码的 User-Agent。 |
 | `created_at` / `updated_at` | datetime | Rails 时间戳。 |
 
 ### `discourse_sms_registration_challenges`
@@ -317,6 +322,8 @@ Content-Type: application/json
 | `sent_at` | datetime | 发送验证码的时间。 |
 | `expires_at` | datetime | 挑战过期时间。有索引。 |
 | `attempts` | integer | 验证失败次数，默认 `0`。 |
+| `ip_address` | string(45) | 请求验证码的 IP 地址。 |
+| `user_agent` | string(500) | 请求验证码的 User-Agent。 |
 | `verified_at` | datetime | 服务商确认验证码正确的时间。 |
 | `token_digest` | string(64) | 一次性注册 Token 的 SHA-256 摘要。唯一索引；不保存原始 Token。 |
 | `token_expires_at` | datetime | 注册 Token 过期时间。 |
@@ -333,6 +340,8 @@ Content-Type: application/json
 | `user_id` | integer | 会员 ID。有索引，并包含 `(user_id, created_at)` 联合索引。 |
 | `phone_number` | string(20) | 事件对应的 E.164 手机号。有索引。 |
 | `event_type` | string(20) | `bind`、`unbind` 或 `verify`。 |
+| `ip_address` | string(45) | 产生该事件的请求 IP 地址。 |
+| `user_agent` | string(500) | 产生该事件的请求 User-Agent。 |
 | `created_at` / `updated_at` | datetime | Rails 时间戳；`created_at` 即事件时间。 |
 
 ### 四张表如何配合
@@ -437,6 +446,7 @@ Content-Type: application/json
 - 挑战会过期，并受 `sms_max_verification_attempts` 限制。
 - 限流按账号、手机号和重发冷却生效。
 - 默认在用户被删除或匿名化时保留手机号绑定和历史记录；开启 `sms_delete_phone_data_on_user_delete` 后才会删除。
+- 绑定、历史事件和验证挑战会记录 IP 地址和 User-Agent，用于审计和滥用排查；绑定与历史数据遵循同一保留开关。
 - 使用只追加的手机号历史表记录绑定、解绑和验证事件。
 - `sms_require_captcha` 开启时，人机验证未启用或未配置会拒绝发送。
 - `sms_require_phone_binding` 开启时，未绑定且不在豁免名单中的账号不能发帖、回复或发送私信。
