@@ -108,6 +108,10 @@ export default class SmsPhoneForm extends Component {
     return this.canManage || this.canViewOtherUser;
   }
 
+  get phoneChangeAllowed() {
+    return Boolean(this.siteSettings.sms_allow_phone_change);
+  }
+
   get captchaProvider() {
     if (!this.siteSettings.discourse_captcha_enabled) {
       return null;
@@ -199,6 +203,10 @@ export default class SmsPhoneForm extends Component {
 
   @action
   startEditing() {
+    if (this.binding.bound && !this.phoneChangeAllowed) {
+      return;
+    }
+
     this.editing = true;
     this.verifyingCurrent = Boolean(this.binding.bound);
     this.phone = "";
@@ -602,17 +610,29 @@ export default class SmsPhoneForm extends Component {
 
               {{#if this.canManage}}
                 {{#unless this.editing}}
-                  <button
-                    type="button"
-                    class="btn btn-default"
-                    {{on "click" this.startEditing}}
-                  >
-                    {{#if this.binding.bound}}
-                      {{i18n "sms.change"}}
+                  {{#if this.binding.bound}}
+                    {{#if this.phoneChangeAllowed}}
+                      <button
+                        type="button"
+                        class="btn btn-default"
+                        {{on "click" this.startEditing}}
+                      >
+                        {{i18n "sms.change"}}
+                      </button>
                     {{else}}
-                      {{i18n "sms.bind"}}
+                      <div class="instructions">{{i18n
+                          "sms.change_disabled"
+                        }}</div>
                     {{/if}}
-                  </button>
+                  {{else}}
+                    <button
+                      type="button"
+                      class="btn btn-default"
+                      {{on "click" this.startEditing}}
+                    >
+                      {{i18n "sms.bind"}}
+                    </button>
+                  {{/if}}
                 {{/unless}}
               {{/if}}
 

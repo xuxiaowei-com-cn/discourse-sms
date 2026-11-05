@@ -30,6 +30,7 @@ en:
       not_bound: "No phone number is linked to your account yet."
       bind: "Link phone number"
       change: "Change phone number"
+      change_disabled: "Changing the bound phone number is disabled on this site."
       cancel: "Cancel"
       phone_label: "Phone number"
       phone_placeholder: "Phone number including country code"

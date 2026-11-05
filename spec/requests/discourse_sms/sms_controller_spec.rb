@@ -24,6 +24,7 @@ RSpec.describe DiscourseSms::SmsController do
     SiteSetting.sms_max_verification_attempts = 5
     SiteSetting.sms_verify_success_json_path = ""
     SiteSetting.sms_verify_success_value = ""
+    SiteSetting.sms_allow_phone_change = true
 
     allow(DiscourseSms::Captcha).to receive(:verify!).and_return(true)
     sign_in(user)
@@ -315,6 +316,62 @@ RSpec.describe DiscourseSms::SmsController do
       expect(a_request(:post, send_url)).not_to have_been_made
     end
 
+    context "when phone changes are disabled" do
+      before { SiteSetting.sms_allow_phone_change = false }
+
+      it "rejects verifying the current phone" do
+        post "/sms/send_code.json",
+             params: {
+               purpose: "verify_current_phone",
+               sms_phone: "13900139000",
+             },
+             headers: {
+               "ACCEPT" => "application/json",
+             }
+
+        expect(response.status).to eq(422)
+        expect(response.parsed_body["errors"].first).to eq(
+          I18n.t("sms.errors.phone_change_disabled"),
+        )
+        expect(a_request(:post, send_url)).not_to have_been_made
+      end
+
+      it "rejects sending a code to a new phone" do
+        post "/sms/send_code.json",
+             params: {
+               sms_phone: "13800138000",
+             },
+             headers: {
+               "ACCEPT" => "application/json",
+             }
+
+        expect(response.status).to eq(422)
+        expect(response.parsed_body["errors"].first).to eq(
+          I18n.t("sms.errors.phone_change_disabled"),
+        )
+        expect(a_request(:post, send_url)).not_to have_been_made
+      end
+
+      it "rejects a pre-issued new phone challenge" do
+        DiscourseSms::VerificationChallenge.issue!(user: user, phone_number: phone, ttl: 10.minutes)
+
+        post "/sms/verify_code.json",
+             params: {
+               sms_code: "123456",
+             },
+             headers: {
+               "ACCEPT" => "application/json",
+             }
+
+        expect(response.status).to eq(422)
+        expect(response.parsed_body["errors"].first).to eq(
+          I18n.t("sms.errors.phone_change_disabled"),
+        )
+        expect(DiscourseSms::PhoneBinding.find_by(user_id: user.id).phone_number).to eq(old_phone)
+        expect(a_request(:post, verify_url)).not_to have_been_made
+      end
+    end
+
     it "changes the phone only after verifying the current phone" do
       post "/sms/send_code.json",
            params: {
@@ -394,6 +451,21 @@ RSpec.describe DiscourseSms::SmsController do
       expect(DiscourseSms::PhoneHistory.order(:id).pluck(:event_type, :phone_number)).to eq(
         [["bind", phone], ["verify", phone]],
       )
+    end
+
+    it "still binds an unbound account when phone changes are disabled" do
+      SiteSetting.sms_allow_phone_change = false
+
+      post "/sms/verify_code.json",
+           params: {
+             sms_code: "123456",
+           },
+           headers: {
+             "ACCEPT" => "application/json",
+           }
+
+      expect(response.status).to eq(200)
+      expect(response.parsed_body["bound"]).to eq(true)
     end
 
     it "increments attempts when the code is invalid" do

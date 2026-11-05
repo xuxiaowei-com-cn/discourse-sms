@@ -13,6 +13,9 @@ plugins:
   sms_require_phone_on_signup:
     default: false
     client: true
+  sms_allow_phone_change:
+    default: true
+    client: true
   sms_registration_token_ttl_minutes:
     default: 30
     min: 5

@@ -24,6 +24,7 @@ one API to verify it.
 - Optionally require phone binding before creating topics, replies, or personal messages, with group and username exemptions.
 - Optionally force unbound members to **Preferences → Security** until they bind a phone number.
 - Optionally require phone verification during local registration; registration is refused without a verified phone number.
+- Optionally disable changing an already bound phone number.
 - Rate limits: resend cooldown, sends per account per hour, and sends per phone number per hour.
 - Verification challenges with a TTL and a limited number of attempts.
 - Provider authentication with a bearer token (or a custom header/scheme).
@@ -135,6 +136,7 @@ All settings are under **Admin → Settings → Plugins**.
 | `sms_require_phone_binding` | `false` | Requires a verified phone number before creating topics, replies, or personal messages. |
 | `sms_force_phone_binding_redirect` | `false` | Forces unbound members to **Preferences → Security**. Enabling it also makes phone binding required. |
 | `sms_require_phone_on_signup` | `false` | Requires local registrations to verify a phone number before the account is created. |
+| `sms_allow_phone_change` | `true` | Allows members to change an already bound phone number. When off, bound members cannot change it; unbound members can still bind. |
 | `sms_registration_token_ttl_minutes` | `30` | How long the one-time registration token remains valid after phone verification. |
 | `sms_skip_phone_binding_groups` | `1\|2` | Groups that can skip the binding requirement. Defaults to admins and moderators. |
 | `sms_skip_phone_binding_usernames` | empty | Individual usernames that can skip the binding requirement (comma or `\|` separated). |
@@ -273,6 +275,10 @@ The current-phone verification is stored in the member's server session and expi
 `sms_code_ttl_minutes`. It is cleared after the new number is saved. The old binding stays active
 until the new number is verified.
 
+Set `sms_allow_phone_change` to `false` to disable this flow for bound members. The change button is
+hidden, and both send and verify endpoints reject change attempts server-side. Unbound members can
+still bind their first phone number.
+
 ## Database schema
 
 The plugin adds four tables. Migrations are in
@@ -383,7 +389,8 @@ when `sms_require_phone_binding` is still on.
 - Administrators can open another member's **Preferences → Security** page and see that member's
   masked bound phone number in a read-only view.
 - **Change phone number** starts the same send/verify flow; the old binding stays active until the
-  new number is verified.
+  new number is verified. When `sms_allow_phone_change` is off, bound members see a notice instead of
+  the change button.
 - When `sms_require_phone_on_signup` is on, the signup form includes a phone verification section.
   The account cannot be created until the phone number is verified; the verified number becomes the
   new account's binding automatically.
@@ -434,6 +441,7 @@ when `sms_require_phone_binding` is still on.
 - When `sms_require_phone_on_signup` is on, `UsersController#create` and the email-code signup path in `SessionController#verify_login_code` reject requests without a valid one-time registration token. The token is bound to the verified phone number, expires, and is single-use.
 - When `sms_force_phone_binding_redirect` is on, unbound non-exempt members are kept on **Preferences → Security**; login, signup, activation, password reset, admin, review, and wizard routes remain reachable.
 - Replacing a bound phone number requires entering and verifying the old number first; a mismatch is rejected. The authorization is session-scoped and expires.
+- When `sms_allow_phone_change` is off, bound members cannot start or complete a phone change, including challenges issued before the setting was disabled.
 - Administrators can only see a masked phone number; the admin-only status endpoint never returns the full number.
 
 ## Development

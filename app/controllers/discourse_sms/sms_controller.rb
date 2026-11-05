@@ -111,6 +111,7 @@ module ::DiscourseSms
       if verifying_current
         binding = PhoneBinding.for_user(current_user)
         return render_error(:current_phone_not_bound) if binding.nil?
+        return render_error(:phone_change_disabled) if !SiteSetting.sms_allow_phone_change
 
         phone =
           PhoneNumber.normalize(
@@ -127,8 +128,9 @@ module ::DiscourseSms
           )
         return render_error(:phone_invalid) if phone.nil?
 
-        if PhoneBinding.verified?(current_user) && !phone_change_authorized?
-          return render_error(:current_phone_verification_required)
+        if PhoneBinding.verified?(current_user)
+          return render_error(:phone_change_disabled) if !SiteSetting.sms_allow_phone_change
+          return render_error(:current_phone_verification_required) if !phone_change_authorized?
         end
       end
 
@@ -179,11 +181,13 @@ module ::DiscourseSms
       if verifying_current
         binding = PhoneBinding.for_user(current_user)
         return render_error(:current_phone_not_bound) if binding.nil?
+        return render_error(:phone_change_disabled) if !SiteSetting.sms_allow_phone_change
         if challenge.phone_number != binding.phone_number
           return render_error(:current_phone_mismatch)
         end
-      elsif PhoneBinding.verified?(current_user) && !phone_change_authorized?
-        return render_error(:current_phone_verification_required)
+      elsif PhoneBinding.verified?(current_user)
+        return render_error(:phone_change_disabled) if !SiteSetting.sms_allow_phone_change
+        return render_error(:current_phone_verification_required) if !phone_change_authorized?
       end
 
       RateLimiter.new(current_user, "sms-verify-hour", 60, 1.hour).performed!
