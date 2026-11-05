@@ -47,7 +47,7 @@ module ::DiscourseSms
       digits = phone.to_s.delete_prefix("+")
       return phone if digits.length < 8
 
-      "+#{digits[0, 4]}****#{digits[-4, 4]}"
+      "+#{digits[0, 4]}******#{digits[-2, 2]}"
     end
   end
 end

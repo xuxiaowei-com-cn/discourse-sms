@@ -63,7 +63,7 @@ RSpec.describe DiscourseSms::PhoneNumber do
 
   describe ".mask" do
     it "hides the middle of the number" do
-      expect(described_class.mask("+8613800138000")).to eq("+8613****8000")
+      expect(described_class.mask("+8613800138000")).to eq("+8613******00")
     end
 
     it "keeps short values unchanged" do

@@ -53,7 +53,7 @@ RSpec.describe DiscourseSms::SmsController do
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["bound"]).to eq(true)
-      expect(response.parsed_body["masked_phone"]).to eq("+8613****8000")
+      expect(response.parsed_body["masked_phone"]).to eq("+8613******00")
       expect(response.parsed_body["verified_at"]).to be_present
       expect(response.parsed_body).not_to have_key("phone_number")
     end
@@ -75,7 +75,7 @@ RSpec.describe DiscourseSms::SmsController do
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["username"]).to eq(other_user.username)
-      expect(response.parsed_body["masked_phone"]).to eq("+8618****0001")
+      expect(response.parsed_body["masked_phone"]).to eq("+8618******01")
       expect(response.parsed_body).not_to have_key("phone_number")
     end
 
@@ -108,7 +108,7 @@ RSpec.describe DiscourseSms::SmsController do
 
       expect(response.status).to eq(200)
       expect(response.parsed_body.dig("current_user", "sms_phone_verified")).to eq(true)
-      expect(response.parsed_body.dig("current_user", "sms_phone_masked")).to eq("+8613****8000")
+      expect(response.parsed_body.dig("current_user", "sms_phone_masked")).to eq("+8613******00")
     end
 
     it "reports an unverified state" do
@@ -135,7 +135,7 @@ RSpec.describe DiscourseSms::SmsController do
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["success"]).to eq(true)
-      expect(response.parsed_body["masked_phone"]).to eq("+8613****8000")
+      expect(response.parsed_body["masked_phone"]).to eq("+8613******00")
       expect(response.parsed_body["resend_after"]).to eq(60)
 
       challenge = DiscourseSms::VerificationChallenge.find_by(user_id: user.id)
@@ -508,7 +508,7 @@ RSpec.describe DiscourseSms::SmsController do
 
       expect(response.status).to eq(200)
       expect(response.parsed_body["bound"]).to eq(true)
-      expect(response.parsed_body["masked_phone"]).to eq("+8613****8000")
+      expect(response.parsed_body["masked_phone"]).to eq("+8613******00")
 
       binding = DiscourseSms::PhoneBinding.find_by(user_id: user.id)
       expect(binding.phone_number).to eq(phone)

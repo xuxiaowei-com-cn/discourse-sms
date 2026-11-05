@@ -112,7 +112,7 @@ RSpec.describe "discourse-sms registration verification" do
       expect(response.status).to eq(200)
       expect(response.parsed_body["registration_token"]).to be_present
       expect(response.parsed_body["phone_number"]).to eq(phone)
-      expect(response.parsed_body["masked_phone"]).to eq("+8613****8000")
+      expect(response.parsed_body["masked_phone"]).to eq("+8613******00")
     end
 
     it "rejects a code for a different phone number" do
