@@ -85,3 +85,8 @@
   flex-basis: 100%;
   margin: 0.5em 0 0;
 }
+
+.code-login-form__email-step.sms-invite-phone-step
+  .form-kit__field-input-email {
+  display: none;
+}

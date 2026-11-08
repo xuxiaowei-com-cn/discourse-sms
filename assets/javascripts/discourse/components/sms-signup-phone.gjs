@@ -30,6 +30,20 @@ export default class SmsSignupPhone extends Component {
   @tracked captchaToken = null;
   @tracked captchaLoadFailed = false;
 
+  markInvitePhoneStep = modifier((element) => {
+    if (!document.body.classList.contains("invite-page")) {
+      return;
+    }
+
+    const emailStep = element.closest(".code-login-form__email-step");
+    const emailInput = emailStep?.querySelector('input[type="email"]');
+    if (!emailStep || !emailInput?.value.includes("*")) {
+      return;
+    }
+
+    emailStep.classList.add("sms-invite-phone-step");
+    return () => emailStep.classList.remove("sms-invite-phone-step");
+  });
   gateContinue = modifier((element, [verified]) => {
     const form = element.closest("form");
     let button = null;
@@ -581,6 +595,7 @@ export default class SmsSignupPhone extends Component {
           class="sms-signup-continue-gate"
           style="display: none"
           {{this.gateContinue this.smsSignup.verified}}
+          {{this.markInvitePhoneStep}}
         ></span>
 
         {{#if this.error}}
